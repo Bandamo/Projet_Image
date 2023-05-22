@@ -28,6 +28,9 @@ class Main():
         # Contour
         list_contour = np.where(gp[:,:] == 1)
         contour = [(list_contour[0][k], list_contour[1][k]) for k in range(len(list_contour[0]))]
+        self.contour = contour
+
+        contour = contour[:100]
 
         if plot:
             # Plot
@@ -35,6 +38,47 @@ class Main():
             plt.plot([c[1] for c in contour], [c[0] for c in contour], 'r.')
             plt.show()
 
+    def load_mask(self,path):
+        img = Image.open(path)
+        self.mask = np.asarray(img)
+
+    def update_contour(self, patch):
+        # patch = (center, radius)
+        center, radius = patch
+
+        # All point in a square of size 2*radius
+        l_point_in_patch = []
+        for i in range(-radius, radius):
+            for j in range(-radius, radius):
+                l_point_in_patch.append((center[0]+i, center[1]+j))
+        
+        # Remove point in the patch from the contour
+        contour = self.contour
+        for k in range(self.contour):
+            if not(self.contour[k] in l_point_in_patch):
+                contour.append(self.contour[k])
+        
+        # Add patch border to the contour
+        patch_border = []
+        for i in range(-radius, radius):
+            if self.mask[center[0]+i, center[1]+radius] == 0:
+                patch_border.append((center[0]+i, center[1]+radius))
+            if self.mask[center[0]+i, center[1]-radius] == 0:
+                patch_border.append((center[0]+i, center[1]-radius))
+        for j in range(-radius, radius):
+            if self.mask[center[0]+radius, center[1]+j] == 0:
+                patch_border.append((center[0]+radius, center[1]+j))
+            if self.mask[center[0]-radius, center[1]+j] == 0:
+                patch_border.append((center[0]-radius, center[1]+j))
+        
+        contour = contour + patch_border
+        self.contour = contour
+
+        # Update mask
+        only_patch = np.zeros(self.shape)
+        only_patch[center[0]-radius:center[0]+radius, center[1]-radius:center[1]+radius] = 1
+        self.mask = np.logical_and(self.mask, only_patch)  
+    
     def load_image(self, path):
         self.image =Image.open(path)
         self.arr = np.asarray(self.image)
@@ -42,10 +86,6 @@ class Main():
 
         self.mask = np.ones(self.shape)
     
-    def load_mask(self,path):
-        img = Image.open(path)
-        self.mask = np.asarray(img)
-        
     def print_image(self):
         plt.imshow(self.arr)
         plt.show()
