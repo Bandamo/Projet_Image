@@ -30,8 +30,6 @@ class Main():
         contour = [(list_contour[0][k], list_contour[1][k]) for k in range(len(list_contour[0]))]
         self.contour = contour
 
-        contour = contour[:100]
-
         if plot:
             # Plot
             plt.imshow(self.arr)
@@ -40,7 +38,11 @@ class Main():
 
     def load_mask(self,path):
         img = Image.open(path)
-        self.mask = np.asarray(img)
+        m = np.asarray(img)
+        m = m[:,:,0]
+        self.mask = np.zeros(self.shape)
+        self.mask[m > 0] = 1
+        self.mask = self.mask[:,:,0]
 
     def update_contour(self, patch):
         # patch = (center, radius)
@@ -53,10 +55,12 @@ class Main():
                 l_point_in_patch.append((center[0]+i, center[1]+j))
         
         # Remove point in the patch from the contour
-        contour = self.contour
-        for k in range(self.contour):
+        contour = []
+        for k in range(len(self.contour)):
             if not(self.contour[k] in l_point_in_patch):
                 contour.append(self.contour[k])
+            else:
+                print(str(self.contour[k]) + " removed")
         
         # Add patch border to the contour
         patch_border = []
@@ -70,14 +74,15 @@ class Main():
                 patch_border.append((center[0]+radius, center[1]+j))
             if self.mask[center[0]-radius, center[1]+j] == 0:
                 patch_border.append((center[0]-radius, center[1]+j))
-        
+
         contour = contour + patch_border
         self.contour = contour
 
         # Update mask
         only_patch = np.zeros(self.shape)
+        only_patch = only_patch[:,:,0]
         only_patch[center[0]-radius:center[0]+radius, center[1]-radius:center[1]+radius] = 1
-        self.mask = np.logical_and(self.mask, only_patch)  
+        self.mask = np.logical_or(self.mask, only_patch)
     
     def load_image(self, path):
         self.image =Image.open(path)
@@ -95,5 +100,12 @@ if __name__=="__main__":
     m = Main()
     m.load_image("image.jpg")
     m.load_mask("mask.ppm")
-    m.find_contour()
-
+    m.find_contour(True)
+    plt.imshow(m.mask)
+    plt.show()
+    m.update_contour(((143,239), 10))
+    plt.imshow(m.mask)
+    plt.show()
+    plt.imshow(m.arr)
+    plt.plot([c[1] for c in m.contour], [c[0] for c in m.contour], 'r.')
+    plt.show()
