@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import scipy as sp
 
 
 class Main():
@@ -13,9 +14,26 @@ class Main():
         self.contour = []
         self.mask = None
     
-    def find_contour(self):
-        # Trouve un contour grossier
-        pass
+    def find_contour(self, plot = False):
+        # To binary 
+        m = np.zeros(self.shape)
+        m[self.mask > 0] = 1
+
+        # Gradient
+        g = np.gradient(m)
+        gp = abs(g[0]) + abs(g[1])
+        gp = gp[:,:,0]
+        gp = np.minimum(2*gp, 1)
+
+        # Contour
+        list_contour = np.where(gp[:,:] == 1)
+        contour = [(list_contour[0][k], list_contour[1][k]) for k in range(len(list_contour[0]))]
+
+        if plot:
+            # Plot
+            plt.imshow(self.arr)
+            plt.plot([c[1] for c in contour], [c[0] for c in contour], 'r.')
+            plt.show()
 
     def load_image(self, path):
         self.image =Image.open(path)
@@ -24,9 +42,10 @@ class Main():
 
         self.mask = np.ones(self.shape)
     
-    def debug_mask(self):
-        pass
-
+    def load_mask(self,path):
+        img = Image.open(path)
+        self.mask = np.asarray(img)
+        
     def print_image(self):
         plt.imshow(self.arr)
         plt.show()
@@ -34,9 +53,7 @@ class Main():
     
 if __name__=="__main__":
     m = Main()
-    #m.load_image("image.jpg")
-    m.mask = np.ones((430,287))
-    m.mask[211:296,157:233,:,:,:] = np.zeros((3,1))
-    plt.imshow(m.mask)
-    plt.show()
-    
+    m.load_image("image.jpg")
+    m.load_mask("mask.ppm")
+    m.find_contour()
+
