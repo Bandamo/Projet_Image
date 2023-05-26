@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 import scipy as sp
+from patch import Patch
 
 
 class Main():
@@ -13,8 +14,11 @@ class Main():
 
         self.contour = []
         self.mask = None
+
+        self.patches = []
     
-    def find_contour(self, plot = False):
+    # ------------------------------------ CONTOUR ------------------------------------
+    def find_contour(self, plot = False, smoothing = False):
         # To binary 
         m = np.zeros(self.shape)
         m[self.mask > 0] = 1
@@ -30,11 +34,41 @@ class Main():
         contour = [(list_contour[0][k], list_contour[1][k]) for k in range(len(list_contour[0]))]
         self.contour = contour
 
+        if smoothing:
+            self.contour = self.smoothing_contour(self.contour)
+
         if plot:
             # Plot
             plt.imshow(self.arr)
             plt.plot([c[1] for c in contour], [c[0] for c in contour], 'r.')
             plt.show()
+
+    def smoothing_contour(self, contour):
+        index = 0
+        while index<len(contour):
+            # Find neighbour of this point
+            neighbour = []
+            possible_neighbour = []
+            for i in range(-1,2):
+                for j in range(-1,2):
+                    if not(i==0 and j==0):
+                        possible_neighbour.append((contour[index][0]+i, contour[index][1]+j))
+
+            for e in contour:
+                if e in possible_neighbour:
+                    neighbour.append(e)
+            
+            # Only keep 2 neighbour in contour
+            if len(neighbour) > 2:
+                i = np.random.randint(0, len(neighbour))
+                neighbour.remove(neighbour[i])
+                i = np.random.randint(0, len(neighbour))
+                neighbour.remove(neighbour[i])
+                for e in neighbour:
+                    contour.remove(e)
+            else:
+                index += 1
+        return contour           
 
     def load_mask(self,path):
         img = Image.open(path)
@@ -60,7 +94,8 @@ class Main():
             if not(self.contour[k] in l_point_in_patch):
                 contour.append(self.contour[k])
             else:
-                print(str(self.contour[k]) + " removed")
+                #print(str(self.contour[k]) + " removed")
+                pass
         
         # Add patch border to the contour
         patch_border = []
@@ -83,7 +118,9 @@ class Main():
         only_patch = only_patch[:,:,0]
         only_patch[center[0]-radius:center[0]+radius, center[1]-radius:center[1]+radius] = 1
         self.mask = np.logical_or(self.mask, only_patch)
-    
+
+    # ------------------------------------ IMAGE ------------------------------------
+
     def load_image(self, path):
         self.image =Image.open(path)
         self.arr = np.asarray(self.image)
@@ -95,17 +132,39 @@ class Main():
         plt.imshow(self.arr)
         plt.show()
     
+    def create_patches(self, patch_size):
+        # Return a list of patches
+        patches = []
+
+        radius = int((patch_size-1)/2)
+        hsize  = int(self.arr.shape[0]/patch_size)
+        vsize  = int(self.arr.shape[1]/patch_size)
+
+        # Get the datas
+        for i in range(hsize):
+            for j in range(vsize):
+                data = self.arr[i*patch_size:(i+1)*patch_size, j*patch_size:(j+1)*patch_size]
+                position = (i*patch_size+radius, j*patch_size+radius)
+                patches.append(Patch(data=data, position=position, radius=radius))
+        
+        self.patches = patches
+                
+
+        
+
+
     
-if __name__=="__main__":
+if __name__=="__masqfin__":
     m = Main()
     m.load_image("image.jpg")
     m.load_mask("mask.ppm")
-    m.find_contour(True)
-    plt.imshow(m.mask)
-    plt.show()
+    m.find_contour(plot = False, smoothing = True)
     m.update_contour(((143,239), 10))
-    plt.imshow(m.mask)
-    plt.show()
-    plt.imshow(m.arr)
-    plt.plot([c[1] for c in m.contour], [c[0] for c in m.contour], 'r.')
-    plt.show()
+
+if __name__=="__main__":
+    a = Image.open("image.jpg")
+    a = np.asarray(a)
+    
+    m = Main()
+    m.arr = a
+    m.create_patches(50)
