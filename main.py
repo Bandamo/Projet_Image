@@ -80,7 +80,7 @@ class Main():
 
     def update_contour(self, patch):
         # patch = (center, radius)
-        center, radius = patch
+        center, radius = (patch.position, patch.radius)
 
         # All point in a square of size 2*radius
         l_point_in_patch = []
@@ -148,10 +148,45 @@ class Main():
                 patches.append(Patch(data=data, position=position, radius=radius))
         
         self.patches = patches
-                
+    
+    # ------------------------------------ PROPAGATING TEXTURE ------------------------
+    def find_best_patch(self, patch):
+        # Return the best patch to replace the given one
+        # patch : Patch
+        # Return : Patch
+        best_patch = None
+        best_distance = float("inf")
+        for p in self.patches:
+            if p.conf >=1: # Condition on confidence
+                distance = np.sum(np.square(p.data - patch.data))
+                if distance < best_distance:
+                    best_distance = distance
+                    best_patch = p
+        return best_patch
 
-        
+    def propagate_texture(self):
+        list_id_priority = np.array([[k, self.patches[k].priority] for k in range(len(self.patches))])
+        list_id_priority.sort(axis=1)
 
+        for index in range(len(self.patches)):
+            i = list_id_priority[index][0]
+            if self.patches[i].active:
+                # Find best patch
+                best_patch = self.find_best_patch(self.patches[i])
+
+                # Replace patch
+                self.patches[i].data = best_patch.data
+                self.patches[i].active = False
+
+                # Update mask
+                self.update_contour(self.patches[i])
+
+                # Update image
+                pos = self.patches[i].position
+                radius = self.patches[i].radius
+                hindex = (pos[0]-radius, pos[0]+radius)
+                vindex = (pos[1]-radius, pos[1]+radius)
+                self.arr[hindex[0]:hindex[1], vindex[0]:vindex[1]] = self.patches[i].data
 
     
 if __name__=="__masqfin__":

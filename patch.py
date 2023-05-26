@@ -9,6 +9,7 @@ class Patch():
         self.conf = initial_conf
         self.dat_term = initial_dat_term
         self.active = False 
+        self.priority = 0
         pass
     
     def set_state(self, state: bool):
