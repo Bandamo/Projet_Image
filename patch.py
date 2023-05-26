@@ -21,11 +21,11 @@ class Patch():
         # Returns a perpendicular vector to the input vector
         return np.array([-vector[1], vector[0]])
 
-    def compute_conf(self, contour, mask):
+    def compute_conf(self, mask):
         # Compute the confidence term
         for i in range(self.position[0] - self.radius, self.position[0] + self.radius):
             for j in range(self.position[1] - self.radius, self.position[1] + self.radius):
-                if mask[i,j] == 0:
+                if mask[i,j] == 1:
                     self.conf += 1
         self.conf /= (2*self.radius + 1)**2
         return self.conf
@@ -38,7 +38,8 @@ class Patch():
         # We then need to get the normal vector to the contour at position
         normal = self.compute_normal(contour, closest_pixel)
         # We then compute the dot product between the two vectors
-        self.dat_term = np.dot(isophote_T, normal)
+        self.dat_term = np.dot(isophote_T, normal)/255
+
         return self.dat_term
 
     def compute_normal(self, contour, position):
