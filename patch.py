@@ -64,8 +64,8 @@ class Patch():
         
         return min_dist
 
-    def update_priority(self, contour):
-        self.conf = self.compute_conf(contour, self.position)
-        self.dat_term = self.compute_dat_term(self.data, self.position, contour)
-        self.priority = self.conf*self.dat_term
+    def update_priority(self, contour, mask):
+        self.conf = self.compute_conf(contour, mask)
+        #self.dat_term = self.compute_dat_term(self.data, self.position, contour)
+        self.priority = self.conf*1#self.dat_term
         return self.priority
