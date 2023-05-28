@@ -79,7 +79,7 @@ class Patch():
         return closest_pixel
 
     def update_priority(self, contour, mask):
-        self.conf = self.compute_conf(contour, mask)
+        self.conf = self.compute_conf(mask)
         #self.dat_term = self.compute_dat_term(self.data, self.position, contour)
         self.priority = self.conf*1#self.dat_term
         return self.priority

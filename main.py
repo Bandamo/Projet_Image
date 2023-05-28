@@ -194,7 +194,7 @@ class Main():
 
         self.shape = self.arr.shape
 
-        new_mask = np.zeros((self.shape[0], self.shape[1]))
+        new_mask = np.ones((self.shape[0], self.shape[1]))
         new_mask[:self.prec_arr.shape[0], :self.prec_arr.shape[1]] = self.mask
         self.mask = new_mask
 
@@ -352,11 +352,10 @@ class Main():
         self.create_patches(patch_size)
         self.upsize_image(patch_size)
 
-        nb_iter = 100
+        bar = tqdm.tqdm()
 
-        bar = tqdm.tqdm(total=nb_iter)
-
-        for _ in range(nb_iter):
+        while len(self.contour) > 0:
+            print("Contour length : " + str(len(self.contour)))
             bar.update(1)
 
             t = time.time()
@@ -384,4 +383,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image.jpg", "mask.ppm", 3)
+    m.main("image.jpg", "mask.ppm", 9)
