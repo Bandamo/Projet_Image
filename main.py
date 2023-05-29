@@ -221,11 +221,14 @@ class Main():
         plt.savefig("log_image/contour"+str(nb_image).zfill(3)+".jpg")
 
     # ------------------------------------ PROPAGATING TEXTURE ------------------------
-    
-    def find_best_patch(self, patch, nb_patch = 300, method = "SSD"):
+
+    def find_best_patch(self, patch, nb_patch = "default", method = "SSD"):
         # Return the best patch to replace the given one
         # patch : Patch
         # Return : Patch
+        if nb_patch == "default":
+            nb_patch = self.shape[0]*self.shape[1]//patch.radius**2
+
         best_patch = None
         best_distance = float("inf")
         data = patch.data
@@ -245,14 +248,16 @@ class Main():
                 else:
                     mean_color = np.array([128,128,128])        
                     print("No one in patch")    
-        random_index = np.random.randint(0, len(self.patches), nb_patch)
-        for k in range(len(self.patches)):
-            p = self.patches[k]
+        random_center = np.random.randint((0+patch.radius, 0+patch.radius), (self.shape[0]-patch.radius, self.shape[1]-patch.radius), (nb_patch, 2))
+        
+        for k in range(nb_patch):
+            p = Patch(data=self.arr[random_center[k,0]-patch.radius:random_center[k,0]+patch.radius+1, random_center[k,1]-patch.radius:random_center[k,1]+patch.radius+1], position=(random_center[k,0], random_center[k,1]), radius=patch.radius)
             if self.mask[p.position]: # Condition on confidence
                 if method == "SSD":
                     distance = np.sum(np.square(data - p.data, dtype=np.int64))
                 elif method == "MC": # Mean Color
                     distance = np.sum(np.square(mean_color-np.mean(p.data, axis=(0,1), dtype=np.int32), dtype=np.int32))
+                
                 if distance < best_distance:
                     best_distance = distance
                     best_patch = p
@@ -383,4 +388,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image.jpg", "mask.ppm", 9)
+    m.main("image2.jpg", "mask2.ppm", 9)
