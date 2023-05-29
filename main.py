@@ -222,12 +222,14 @@ class Main():
 
     # ------------------------------------ PROPAGATING TEXTURE ------------------------
 
-    def find_best_patch(self, patch, nb_patch = "default", method = "SSD"):
+    def find_best_patch(self, patch, discretisation = "default", method = "SSD"):
         # Return the best patch to replace the given one
         # patch : Patch
         # Return : Patch
-        if nb_patch == "default":
-            nb_patch = self.shape[0]*self.shape[1]//patch.radius**2
+        if discretisation == "default":
+            discretisation = 1
+        
+        distance_btwn_patch = (2*patch.radius + 1)*discretisation
 
         best_patch = None
         best_distance = float("inf")
@@ -248,22 +250,33 @@ class Main():
                 else:
                     mean_color = np.array([128,128,128])        
                     print("No one in patch")    
-        random_center = np.random.randint((0+patch.radius, 0+patch.radius), (self.shape[0]-patch.radius, self.shape[1]-patch.radius), (nb_patch, 2))
-        
-        for k in range(nb_patch):
-            p = Patch(data=self.arr[random_center[k,0]-patch.radius:random_center[k,0]+patch.radius+1, random_center[k,1]-patch.radius:random_center[k,1]+patch.radius+1], position=(random_center[k,0], random_center[k,1]), radius=patch.radius)
-            if self.mask[p.position]: # Condition on confidence
+
+        # Get all patches in the image
+        patches = []
+        center_list = []
+        hcenter, vcenter = (patch.radius, patch.radius)
+        while hcenter < self.shape[0]-patch.radius and vcenter < self.shape[1]-patch.radius:
+            patches.append(self.arr[hcenter-patch.radius:hcenter+patch.radius+1, vcenter-patch.radius:vcenter+patch.radius+1])
+            center_list.append((hcenter, vcenter))
+            hcenter += distance_btwn_patch
+            if hcenter >= self.shape[0]-patch.radius:
+                hcenter = patch.radius
+                vcenter += distance_btwn_patch
+
+        for k in range(len(patches)):
+            p = patches[k]            
+            if self.mask[center_list[k]]: # Condition on confidence
                 if method == "SSD":
-                    distance = np.sum(np.square(data - p.data, dtype=np.int64))
+                    distance = np.sum(np.square(data - p, dtype=np.int64))
                 elif method == "MC": # Mean Color
-                    distance = np.sum(np.square(mean_color-np.mean(p.data, axis=(0,1), dtype=np.int32), dtype=np.int32))
-                
+                    distance = np.sum(np.square(mean_color-np.mean(p, axis=(0,1), dtype=np.int32), dtype=np.int32))
                 if distance < best_distance:
                     best_distance = distance
-                    best_patch = p
+                    best_patch = (p, center_list[k])
         if best_patch is None:
             print("No best patch found")
         else:
+            best_patch = Patch(data=best_patch[0], position=best_patch[1], radius=patch.radius)
             return best_patch
 
     def propagate_texture(self, verbose = False):
@@ -280,7 +293,7 @@ class Main():
             if self.patches[i].active:
                 # Find best patch
                 t = time.time()
-                best_patch = self.find_best_patch(self.patches[i], method="MC")
+                best_patch = self.find_best_patch(self.patches[i], method="MC", discretisation=10)
 
                 if verbose:
                     t1 += time.time()-t
@@ -310,7 +323,7 @@ class Main():
                 #print("Patch " + str(self.patches[i].position) + " not active")
                 pass
         if verbose:
-            print("Time to find best patch : " + str(t1))
+            print("Time to find best patc$h : " + str(t1))
             print("Time to update contour : " + str(t2))
             print("Time to update image : " + str(t3))
 
