@@ -4,16 +4,22 @@ from patch import Patch
 from main import Main
 import matplotlib.pyplot as plt
 import cv2
+import time
 
 if __name__ == "__main__":
     m = Main()
     m.load_image("image.jpg")
     m.load_mask("mask.ppm")
+    m.upsize_image(9)
     m.find_contour(plot = False)
     m.create_patches(9)
             
-    selected_patch = m.patches[1254] #959 1254
+    #selected_patch = m.patches[959] #959 1254
+    selected_patch = m.patches[1040] #959 1254
 
+    start_time = time.time()
+    print('Prio : %f' % selected_patch.update_priority(m.mask, method='max_gradient'))
+    print('Time : %f' % (time.time() - start_time))
     # Convert to grayscale
     selected_patch.data = cv2.cvtColor(selected_patch.data, cv2.COLOR_BGR2GRAY)
     selected_patch.data = cv2.GaussianBlur(selected_patch.data, (7,7), 0)
@@ -68,7 +74,11 @@ if __name__ == "__main__":
     plt.plot([c[1] for c in m.contour], [c[0] for c in m.contour], 'g.')
     plt.plot(closest_pix_org[1], closest_pix_org[0],marker='*', color='blue')
 
+    # Get the gradient of the mask within the patch
     plt.figure()
-    plt.plot(np.gradient(m.mask[selected_patch.position[1] - selected_patch.radius:selected_patch.position[1] + selected_patch.radius, selected_patch.position[0] - selected_patch.radius:selected_patch.position[0] + selected_patch.radius]))
-
+    grad_mask_x = np.gradient(m.mask)[0][selected_patch.position[0] - selected_patch.radius:selected_patch.position[0] + selected_patch.radius, selected_patch.position[1] - selected_patch.radius:selected_patch.position[1] + selected_patch.radius]
+    grad_mask_y = np.gradient(m.mask)[1][selected_patch.position[0] - selected_patch.radius:selected_patch.position[0] + selected_patch.radius, selected_patch.position[1] - selected_patch.radius:selected_patch.position[1] + selected_patch.radius]
+    plt.quiver(-grad_mask_y, grad_mask_x)
+    plt.gca().invert_yaxis()
+    plt.plot(closest_pix[1], closest_pix[0], 'b*')
     plt.show()
