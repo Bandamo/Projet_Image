@@ -5,6 +5,7 @@ from patch import Patch
 import progressbar
 import time
 import os
+from threading import Thread
 
 class Main():
     def __init__(self) -> None:
@@ -294,8 +295,34 @@ class Main():
         plt.savefig("log_image/contour"+str(nb_image).zfill(3)+".jpg")
 
     # ------------------------------------ PROPAGATING TEXTURE ------------------------
+    def distances(self, method = "SSD", data = None, patch2 = None, mean_color = None):
+        if method == "SSD":
+            data = data.astype(np.int32)
+            p2 = np.copy(patch2)
+            p2 = p2.astype(np.int32)
+            p2[np.where(data == 0)] = 0
+            distance = np.sum((abs(data - p2))**2, dtype=np.int64)
+        elif method == "MC":
+            distance = np.sum(np.square(mean_color-np.mean(patch2, axis=(0,1), dtype=np.int32), dtype=np.int32))
+        return distance
 
-    def find_best_patch(self, patch, discretisation = "default", method = "SSD"):
+    def thread_best_patch(self, patches, center_list, process_number = -1 ,mutable_array = None, data = None, mean_color = None, method = "SSD"):
+        best_distance = float("inf")
+        for k in range(len(patches)):
+            p = patches[k]            
+            if self.mask[center_list[k]]: # Condition on confidence
+                if method == "SSD":
+                    distance = self.distances(method=method, data=data, patch2=p)
+                elif method == "MC": # Mean Color
+                    distance = self.distances(method=method, patch2=p, mean_color=mean_color)
+                if distance < best_distance:
+                    best_distance = distance
+                    best_patch = (p, center_list[k])
+        if mutable_array is not None:
+            mutable_array[process_number] = (best_patch, best_distance)
+        return best_patch, best_distance
+
+    def find_best_patch(self, patch, discretisation = "default", method = "SSD", nb_thread = 1):
         # Return the best patch to replace the given one
         # patch : Patch
         # Return : Patch
@@ -304,9 +331,11 @@ class Main():
         
         distance_btwn_patch = (2*patch.radius + 1)*discretisation
 
-        best_patch = None
-        best_distance = float("inf")
         data = patch.data
+        best_patches = {}
+        best_distances = {}
+
+        mean_color = None
         if method == "MC":
             mean_color = np.sum(data, axis=(0,1), dtype=np.int32)
             patch_mask = self.mask[patch.position[0]-patch.radius:patch.position[0]+patch.radius+1, patch.position[1]-patch.radius:patch.position[1]+patch.radius+1]
@@ -336,19 +365,27 @@ class Main():
                 hcenter = patch.radius
                 vcenter += distance_btwn_patch
 
-        for k in range(len(patches)):
-            p = patches[k]            
-            if self.mask[center_list[k]]: # Condition on confidence
-                if method == "SSD":
-                    p2 = np.copy(p)
-                    p2 = p2.astype(np.int32)
-                    p2[np.where(patch.data == 0)] = 0
-                    distance = np.sum((data - p2)**2, dtype=np.int64)
-                elif method == "MC": # Mean Color
-                    distance = np.sum(np.square(mean_color-np.mean(p, axis=(0,1), dtype=np.int32), dtype=np.int32))
-                if distance < best_distance:
-                    best_distance = distance
-                    best_patch = (p, center_list[k])
+        if nb_thread == 1:
+            best_patch, best_distance = self.thread_best_patch(patches, center_list, data=data, mean_color=mean_color, method=method)
+        else:
+            mutable_array = [(None, None) for k in range(nb_thread)]
+
+            list_of_patches = []
+            list_of_center = []
+            for k in range(nb_thread):
+                list_of_patches.append(patches[k::nb_thread])
+                list_of_center.append(center_list[k::nb_thread])
+            list_of_threads = []
+            for k in range(nb_thread):
+                list_of_threads.append(Thread(target=self.thread_best_patch, args=(list_of_patches[k], list_of_center[k], k, mutable_array, data, mean_color, method)))
+                list_of_threads[k].start()
+            for k in range(nb_thread):
+                list_of_threads[k].join()
+            best_patch, best_distance = mutable_array[0]
+            for k in range(1, nb_thread):
+                if mutable_array[k][1] < best_distance:
+                    best_patch, best_distance = mutable_array[k]
+
         if best_patch is None:
             print("No best patch found")
         else:
@@ -486,7 +523,7 @@ class Main():
             self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation)
             self.find_contour(smoothing=True)
 
-            #self.save_image(self.arr)
+            self.save_image(self.arr)
 
             if verbose:
                 print("Propagate texture : " + str(time.time()-t))
@@ -497,4 +534,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image2.jpg", "mask2.ppm", 9, verbose=False, method="SSD", discretisation=1)
+    m.main("image4.jpg", "mask8.ppm", 9, verbose=False, method="SSD", discretisation=1)
