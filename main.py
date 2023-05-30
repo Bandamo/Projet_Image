@@ -1,9 +1,8 @@
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-import scipy as sp
 from patch import Patch
-import tqdm
+import progressbar
 import time
 import os
 
@@ -21,6 +20,24 @@ class Main():
     
     # ------------------------------------ CONTOUR ------------------------------------
     def find_contour(self, plot = False, smoothing = False):
+        """
+        Get the contour of the mask
+
+        Parameters
+        ----------
+        smoothing : bool (default : False) : if True, the contour will only be 1 pixel 
+                                                wide but some points will be removed else 
+                                                the contour will be 2 pixels wide
+        
+        plot : bool (default : False) : if True, the contour will be plotted on the image
+
+        Returns
+        -------
+        contour : list of tuple : list of the coordinates of the contour stored in self.contour
+
+
+        """
+        
         # To binary 
         m = np.zeros(self.shape)
         m[self.mask > 0] = 1
@@ -46,6 +63,9 @@ class Main():
             plt.show()
 
     def smoothing_contour(self, contour):
+        """
+        Make the contour 1 pixel wide by removing some points
+        """
         index = 0
         while index<len(contour):
             # Find neighbour of this point
@@ -73,6 +93,10 @@ class Main():
         return contour           
 
     def load_mask(self,path):
+        """
+        Load the mask from the path and store it in self.mask
+        """
+        
         img = Image.open(path)
         m = np.asarray(img)
         m = m[:,:,0]
@@ -83,6 +107,10 @@ class Main():
         print("Shape of mask : " + str(self.mask.shape))
 
     def update_contour(self, patch, plot = False):
+        """
+        Remove the patch from the mask and the contour and add the border of the patch to the contour
+        """
+        
         # patch = (center, radius)
         center, radius = (patch.position, patch.radius)
 
@@ -134,6 +162,10 @@ class Main():
             plt.show()
 
     def update_mask(self, patch, plot = False):
+        """
+        Remove the patch from the mask
+        """
+
         center, radius = (patch.position, patch.radius)
 
         # Update mask
@@ -146,9 +178,22 @@ class Main():
         if plot:
             plt.imshow(self.mask)
             plt.show()
+
+    def remove_mask(self, plot = False):
+        """
+        Remove the mask from the image
+        """
+
+        uint8mask = self.mask.astype(np.uint8)
+        self.arr = self.arr * uint8mask[:,:,np.newaxis]
+        if plot:
+            self.print_image()
     # ------------------------------------ IMAGE ------------------------------------
 
     def load_image(self, path):
+        """
+        Load the image from the path and store it in self.arr
+        """
         self.image =Image.open(path)
         self.arr = np.asarray(self.image)
         self.shape = self.arr.shape
@@ -159,24 +204,39 @@ class Main():
         plt.imshow(self.arr)
         plt.show()
     
-    def create_patches(self, patch_size):
-        # Return a list of patches
+    def create_patches(self, patch_size, plot = False):
+        # Return a list of patches of size patch_size all along the contour
         patches = []
 
         radius = int((patch_size-1)/2)
-        hsize  = int(self.arr.shape[0]/patch_size)
-        vsize  = int(self.arr.shape[1]/patch_size)
 
-        # Get the datas
-        for i in range(hsize):
-            for j in range(vsize):
-                data = self.arr[i*patch_size:(i+1)*patch_size, j*patch_size:(j+1)*patch_size]
-                position = (i*patch_size+radius, j*patch_size+radius)
-                patches.append(Patch(data=data, position=position, radius=radius))
-        
+        contour = self.contour
+
+        for e in contour:
+            verif = True
+
+            for p in patches:
+                if e[0]+radius >= p.position[0]-radius and e[0]-radius <= p.position[0]+radius and e[1]+radius >= p.position[1]-radius and e[1]-radius <= p.position[1]+radius:
+                    verif = False
+                    break
+
+            if verif:
+                patch = Patch(data=self.arr[e[0]-radius:e[0]+radius+1, e[1]-radius:e[1]+radius+1], position=e, radius=radius)
+                patch.set_state(True)
+                patches.append(patch)
+
         self.patches = patches
-    
+        if plot:
+            arr = np.zeros(self.shape)
+            for p in patches:
+                arr[p.position[0]-radius:p.position[0]+radius+1, p.position[1]-radius:p.position[1]+radius+1] = 1
+            plt.imshow(arr)
+            plt.show()
+        
     def upsize_image(self, patch_size):
+        """
+        Make the image size a multiple of patch_size
+        """
         self.prec_arr = self.arr
         print(self.arr.dtype)
         upsize = ((int(np.floor(self.arr.shape[0]/patch_size)+1)*patch_size), int((np.floor(self.arr.shape[1]/patch_size)+1)*patch_size), 3)
@@ -199,11 +259,18 @@ class Main():
         self.mask = new_mask
 
     def recrop_image(self):
+        """
+        Get back to the original size of the image
+        """
         init_shape = self.prec_arr.shape
         self.arr = self.arr[:init_shape[0], :init_shape[1], :]
         self.shape = self.arr.shape
 
     def save_image(self, arr=None):
+        """
+        Save log images
+        """
+
         if arr is None:
             arr = self.arr
         img = Image.fromarray(arr)
@@ -328,10 +395,17 @@ class Main():
             print("Time to update image : " + str(t3))
 
     def update_priorities(self):
+        """
+        Update the priority of all patches
+        """
         for p in self.patches:
             p.update_priority(self.contour, self.mask)
     
     def get_active_patches(self, verbose = False):
+        """
+        obsolete
+        Get the active patches
+        """
         if verbose:
             print("Updating active patches")
             nb_active = 0
@@ -363,21 +437,27 @@ class Main():
         self.find_contour(smoothing=True)
 
         # Remove mask
-        uint8mask = self.mask.astype(np.uint8)
-        self.arr = self.arr * uint8mask[:,:,np.newaxis]
         self.save_image()
 
-        self.create_patches(patch_size)
         self.upsize_image(patch_size)
 
-        bar = tqdm.tqdm()
+        bar = progressbar.ProgressBar(max_value=len(self.contour))
+
+        init_len = len(self.contour)
+        i = 0
 
         while len(self.contour) > 0:
-            print("Contour length : " + str(len(self.contour)))
-            bar.update(1)
+
+            # Bar things
+            #print("Contour length : " + str(len(self.contour)))
+            if max((init_len - len(self.contour)), 0) == 0:
+                i+=1
+                bar.update(i)
+            else:
+                bar.update(init_len - len(self.contour))
 
             t = time.time()
-            self.get_active_patches()
+            self.create_patches(patch_size)
             if verbose:
                 print("Active patches : " + str(time.time()-t))
                 t = time.time()
