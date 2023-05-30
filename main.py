@@ -399,7 +399,7 @@ class Main():
         Update the priority of all patches
         """
         for p in self.patches:
-            p.update_priority(self.contour, self.mask)
+            p.update_priority(self.mask)
     
     def get_active_patches(self, verbose = False):
         """
