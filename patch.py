@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import scipy as sc
+import matplotlib.pyplot as plt
 
 class Patch():
     def __init__(self, data, radius, position, initial_conf=0, initial_dat_term=1) -> None:
@@ -38,22 +39,31 @@ class Patch():
         grad = self.compute_gradient()
 
         if method == 'closest_pixel':
-            isophote = np.array([grad[closest_pixel[0], closest_pixel[1], 0], grad[closest_pixel[0], closest_pixel[1], 1]])
+            isophote = np.array(grad[:1][closest_pixel[0], closest_pixel[1]])
         elif method == 'max_gradient':
             max_coord = np.unravel_index(np.argmax(np.sqrt(grad[0]**2 + grad[1]**2)), grad[0].shape)
             isophote = np.array([grad[0][max_coord], grad[1][max_coord]])
         
         isophote_T = self.perpendicular_vector(isophote)
+        print("Isophote: ", isophote_T)
         # We then need to get the normal vector to the contour at position
         normal = self.compute_normal(mask, closest_pixel)
+        print("Normal: ", normal)
         # We then compute the dot product between the two vectors
-        self.dat_term = abs(np.dot(isophote_T, normal)/255)
+        self.dat_term = np.linalg.norm(abs(np.dot(isophote_T, normal)/255))
 
         return self.dat_term
 
     def compute_normal(self, mask, position):
         # Compute the normal vector to the contour at position
-        normal = np.gradient(mask)[:1, position[0], position[1]]
+        mask = mask[self.position[0] - self.radius:self.position[0] + self.radius, self.position[1] - self.radius:self.position[1] + self.radius]
+        normal = np.gradient(mask)[:1]
+
+        position[0] = position[0] - self.position[0] + self.radius
+        position[1] = position[1] - self.position[1] + self.radius
+
+        # Evaluate the gradient at position
+        normal = normal[0][position[0], position[1]]
         return normal
     
     def compute_gradient(self):
@@ -62,6 +72,7 @@ class Patch():
         data = cv2.GaussianBlur(data, (7,7), 0)
 
         grad = np.gradient(data)
+
         return grad
 
     def get_closest_pixel(self, mask, position):
@@ -70,18 +81,17 @@ class Patch():
         closest_pixel = None
         for i in range(position[0] - self.radius, position[0] + self.radius):
             for j in range(position[1] - self.radius, position[1] + self.radius):
-                if mask[i,j] != mask[position]:
+                if mask[i,j] != mask[position[0], position[1]]:
                     dist = np.linalg.norm(np.array([i,j]) - position)
                     if min_dist is None or dist < min_dist:
                         min_dist = dist
-        
-        print("Min dist: %f"%min_dist)
-        print("Closest pixel: %s"%closest_pixel)
+                        closest_pixel = [i,j]
         return closest_pixel
 
     def update_priority(self, mask, method='closest_pixel'):
         self.conf = self.compute_conf(mask)
-        
+        print('Conf: %f' % self.conf)
         self.dat_term = self.compute_dat_term(mask, method)
+        print('Dat term: %s' % self.dat_term)
         self.priority = self.conf*self.dat_term
         return self.priority
