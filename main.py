@@ -188,6 +188,11 @@ class Main():
         self.arr = self.arr * uint8mask[:,:,np.newaxis]
         if plot:
             self.print_image()
+
+    def fill_patch(self, patch1, patch2):
+        # Fill the patch1 with the patch2
+        patch1.data[np.where(patch1.data == 0)] = patch2.data[np.where(patch1.data == 0)]
+
     # ------------------------------------ IMAGE ------------------------------------
 
     def load_image(self, path):
@@ -334,7 +339,10 @@ class Main():
             p = patches[k]            
             if self.mask[center_list[k]]: # Condition on confidence
                 if method == "SSD":
-                    distance = np.sum(np.square(data - p, dtype=np.int64))
+                    p2 = np.copy(p)
+                    p2 = p2.astype(np.int32)
+                    p2[np.where(patch.data == 0)] = 0
+                    distance = np.sum((data - p2)**2, dtype=np.int32)
                 elif method == "MC": # Mean Color
                     distance = np.sum(np.square(mean_color-np.mean(p, axis=(0,1), dtype=np.int32), dtype=np.int32))
                 if distance < best_distance:
@@ -346,9 +354,9 @@ class Main():
             best_patch = Patch(data=best_patch[0], position=best_patch[1], radius=patch.radius)
             return best_patch
 
-    def propagate_texture(self, verbose = False):
+    def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1):
         list_id_priority = np.array([[k, self.patches[k].priority] for k in range(len(self.patches))])
-        list_id_priority = list_id_priority[list_id_priority[:,0].argsort()]
+        list_id_priority = list_id_priority[list_id_priority[:,1].argsort()]
 
         if verbose:
             t1 = 0
@@ -360,13 +368,13 @@ class Main():
             if self.patches[i].active:
                 # Find best patch
                 t = time.time()
-                best_patch = self.find_best_patch(self.patches[i], method="MC", discretisation=10)
+                best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation)
 
                 if verbose:
                     t1 += time.time()-t
 
                 # Replace patch
-                self.patches[i].data = best_patch.data
+                self.fill_patch(self.patches[i], best_patch)
                 self.patches[i].set_state(False)
 
                 # Update mask
@@ -389,8 +397,15 @@ class Main():
             else:
                 #print("Patch " + str(self.patches[i].position) + " not active")
                 pass
+            
+            if plot:
+                plt.imshow(self.mask)
+                # Entoure le patch
+                plt.plot([vindex[0], vindex[0], vindex[1], vindex[1], vindex[0]], [hindex[0], hindex[1], hindex[1], hindex[0], hindex[0]], 'r')
+                plt.show()
+
         if verbose:
-            print("Time to find best patc$h : " + str(t1))
+            print("Time to find best patch : " + str(t1))
             print("Time to update contour : " + str(t2))
             print("Time to update image : " + str(t3))
 
@@ -399,7 +414,7 @@ class Main():
         Update the priority of all patches
         """
         for p in self.patches:
-            p.update_priority(self.mask)
+            p.update_priority(self.mask.astype(np.uint8), method = "max_gradient")
     
     def get_active_patches(self, verbose = False):
         """
@@ -437,6 +452,8 @@ class Main():
         self.find_contour(smoothing=True)
 
         # Remove mask
+        self.remove_mask()
+
         self.save_image()
 
         self.upsize_image(patch_size)
@@ -467,7 +484,7 @@ class Main():
                 print("Update priorities : " + str(time.time()-t))
                 t = time.time()
 
-            self.propagate_texture(verbose = verbose)
+            self.propagate_texture(verbose = verbose, plot=False)
             self.find_contour(smoothing=True)
 
             self.save_image(self.arr)
@@ -481,4 +498,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image2.jpg", "mask2.ppm", 9)
+    m.main("image3.jpg", "mask3.ppm", 19)

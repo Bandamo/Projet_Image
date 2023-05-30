@@ -39,16 +39,17 @@ class Patch():
         grad = self.compute_gradient()
 
         if method == 'closest_pixel':
+            #print("Closest pixel: ", closest_pixel)
             isophote = np.array(grad[:1][closest_pixel[0], closest_pixel[1]])
         elif method == 'max_gradient':
             max_coord = np.unravel_index(np.argmax(np.sqrt(grad[0]**2 + grad[1]**2)), grad[0].shape)
             isophote = np.array([grad[0][max_coord], grad[1][max_coord]])
         
         isophote_T = self.perpendicular_vector(isophote)
-        print("Isophote: ", isophote_T)
+        #print("Isophote: ", isophote_T)
         # We then need to get the normal vector to the contour at position
         normal = self.compute_normal(mask, closest_pixel)
-        print("Normal: ", normal)
+        #print("Normal: ", normal)
         # We then compute the dot product between the two vectors
         self.dat_term = np.linalg.norm(abs(np.dot(isophote_T, normal)/255))
 
@@ -90,8 +91,8 @@ class Patch():
 
     def update_priority(self, mask, method='closest_pixel'):
         self.conf = self.compute_conf(mask)
-        print('Conf: %f' % self.conf)
+        #print('Conf: %f' % self.conf)
         self.dat_term = self.compute_dat_term(mask, method)
-        print('Dat term: %s' % self.dat_term)
+        #print('Dat term: %s' % self.dat_term)
         self.priority = self.conf*self.dat_term
         return self.priority
