@@ -206,6 +206,7 @@ class Main():
         self.mask = np.ones(self.shape)
     
     def print_image(self):
+        plt.clf()
         plt.imshow(self.arr)
         plt.show()
     
@@ -342,7 +343,7 @@ class Main():
                     p2 = np.copy(p)
                     p2 = p2.astype(np.int32)
                     p2[np.where(patch.data == 0)] = 0
-                    distance = np.sum((data - p2)**2, dtype=np.int32)
+                    distance = np.sum((data - p2)**2, dtype=np.int64)
                 elif method == "MC": # Mean Color
                     distance = np.sum(np.square(mean_color-np.mean(p, axis=(0,1), dtype=np.int32), dtype=np.int32))
                 if distance < best_distance:
@@ -355,54 +356,50 @@ class Main():
             return best_patch
 
     def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1):
-        list_id_priority = np.array([[k, self.patches[k].priority] for k in range(len(self.patches))])
-        list_id_priority = list_id_priority[list_id_priority[:,1].argsort()]
+        priorities = [self.patches[k].priority for k in range(len(self.patches))]
+        i = np.argmin(priorities)
 
         if verbose:
             t1 = 0
             t2 = 0
             t3 = 0
 
-        for index in range(len(self.patches)):
-            i = int(list_id_priority[index,0])
-            if self.patches[i].active:
-                # Find best patch
-                t = time.time()
-                best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation)
+        t = time.time()
+        best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation)
 
-                if verbose:
-                    t1 += time.time()-t
+        if verbose:
+            t1 += time.time()-t
 
-                # Replace patch
-                self.fill_patch(self.patches[i], best_patch)
-                self.patches[i].set_state(False)
+        # Replace patch
+        self.fill_patch(self.patches[i], best_patch)
+        self.patches[i].set_state(False)
 
-                # Update mask
-                t = time.time()
-                self.update_mask(self.patches[i], plot=False)
+        # Update mask
+        t = time.time()
+        self.update_mask(self.patches[i], plot=False)
 
-                if verbose:
-                    t2 += time.time()-t
+        if verbose:
+            t2 += time.time()-t
 
-                # Update image
-                t = time.time()
-                pos = self.patches[i].position
-                radius = self.patches[i].radius
-                hindex = (pos[0]-radius, pos[0]+radius)
-                vindex = (pos[1]-radius, pos[1]+radius)
-                self.arr[hindex[0]:hindex[1]+1, vindex[0]:vindex[1]+1] = self.patches[i].data
-                if verbose:
-                    t3 += time.time()-t
+        # Update image
+        t = time.time()
+        pos = self.patches[i].position
+        radius = self.patches[i].radius
+        hindex = (pos[0]-radius, pos[0]+radius)
+        vindex = (pos[1]-radius, pos[1]+radius)
+        self.arr[hindex[0]:hindex[1]+1, vindex[0]:vindex[1]+1] = self.patches[i].data
+        if verbose:
+            t3 += time.time()-t
 
-            else:
-                #print("Patch " + str(self.patches[i].position) + " not active")
-                pass
-            
-            if plot:
-                plt.imshow(self.mask)
-                # Entoure le patch
-                plt.plot([vindex[0], vindex[0], vindex[1], vindex[1], vindex[0]], [hindex[0], hindex[1], hindex[1], hindex[0], hindex[0]], 'r')
-                plt.show()
+        else:
+            #print("Patch " + str(self.patches[i].position) + " not active")
+            pass
+        
+        if plot:
+            plt.imshow(self.mask)
+            # Entoure le patch
+            plt.plot([vindex[0], vindex[0], vindex[1], vindex[1], vindex[0]], [hindex[0], hindex[1], hindex[1], hindex[0], hindex[0]], 'r')
+            plt.show()
 
         if verbose:
             print("Time to find best patch : " + str(t1))
@@ -446,7 +443,7 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, verbose = False):
+    def main(self, image_path, mask_path, patch_size, verbose = False, method = "SSD", discretisation = 1):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=True)
@@ -458,20 +455,22 @@ class Main():
 
         self.upsize_image(patch_size)
 
-        bar = progressbar.ProgressBar(max_value=len(self.contour))
-
-        init_len = len(self.contour)
+        max_mask = len(np.where(self.mask == 0)[0])
+        bar = progressbar.ProgressBar(max_value=max_mask)
         i = 0
 
         while len(self.contour) > 0:
 
             # Bar things
             #print("Contour length : " + str(len(self.contour)))
-            if max((init_len - len(self.contour)), 0) == 0:
-                i+=1
-                bar.update(i)
-            else:
-                bar.update(init_len - len(self.contour))
+            t = time.time()
+            try:
+                bar.update(max_mask-len(np.where(self.mask == 0)[0]))
+            except:
+                pass
+            if verbose:
+                print("Bar : " + str(time.time()-t))
+                t = time.time()
 
             t = time.time()
             self.create_patches(patch_size)
@@ -484,10 +483,10 @@ class Main():
                 print("Update priorities : " + str(time.time()-t))
                 t = time.time()
 
-            self.propagate_texture(verbose = verbose, plot=False)
+            self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation)
             self.find_contour(smoothing=True)
 
-            self.save_image(self.arr)
+            #self.save_image(self.arr)
 
             if verbose:
                 print("Propagate texture : " + str(time.time()-t))
@@ -498,4 +497,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image3.jpg", "mask3.ppm", 19)
+    m.main("image2.jpg", "mask2.ppm", 9, verbose=False, method="SSD", discretisation=1)
