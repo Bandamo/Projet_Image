@@ -18,6 +18,8 @@ class Main():
         self.mask = None
 
         self.patches = []
+
+        self.save_patches_center_list = []
     
     # ------------------------------------ CONTOUR ------------------------------------
     def find_contour(self, plot = False, smoothing = False):
@@ -347,7 +349,24 @@ class Main():
             mutable_array[process_number] = (best_patch, best_distance)
         return best_patch, best_distance
 
-    def find_best_patch(self, patch, discretisation = "default", method = "SSD", nb_thread = 1):
+    def get_possible_patches(self, distance_btwn_patch, radius):
+        # Return the possible patches to replace the given one
+        # patch : Patch
+        # Return : list of Patch
+        patches = []
+        center_list = []
+        hcenter, vcenter = (radius, radius)
+        while hcenter < self.shape[0]-radius and vcenter < self.shape[1]-radius:
+            if self.mask[hcenter-radius, vcenter-radius] and self.mask[hcenter+radius, vcenter-radius] and self.mask[hcenter-radius, vcenter+radius] and self.mask[hcenter+radius, vcenter+radius]:
+                patches.append(self.arr[hcenter-radius:hcenter+radius+1, vcenter-radius:vcenter+radius+1])
+                center_list.append((hcenter, vcenter))
+            hcenter += distance_btwn_patch
+            if hcenter >= self.shape[0]-radius:
+                hcenter = radius
+                vcenter += distance_btwn_patch
+        return patches, center_list
+
+    def find_best_patch(self, patch, discretisation = "default", method = "SSD", nb_thread = 1, dynamic_patches = True):
         # Return the best patch to replace the given one
         # patch : Patch
         # Return : Patch
@@ -379,16 +398,10 @@ class Main():
                     print("No one in patch")    
 
         # Get all patches in the image
-        patches = []
-        center_list = []
-        hcenter, vcenter = (patch.radius, patch.radius)
-        while hcenter < self.shape[0]-patch.radius and vcenter < self.shape[1]-patch.radius:
-            patches.append(self.arr[hcenter-patch.radius:hcenter+patch.radius+1, vcenter-patch.radius:vcenter+patch.radius+1])
-            center_list.append((hcenter, vcenter))
-            hcenter += distance_btwn_patch
-            if hcenter >= self.shape[0]-patch.radius:
-                hcenter = patch.radius
-                vcenter += distance_btwn_patch
+        if dynamic_patches:
+            patches, center_list = self.get_possible_patches(distance_btwn_patch = distance_btwn_patch, radius = patch.radius)
+        else:
+            patches, center_list = self.save_patches_center_list
 
         if nb_thread == 1:
             best_patch, best_distance = self.thread_best_patch(patches, center_list, data=data, csource=patch.position , mean_color=mean_color, method=method)
@@ -417,7 +430,7 @@ class Main():
             best_patch = Patch(data=best_patch[0], position=best_patch[1], radius=patch.radius)
             return best_patch
 
-    def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1, nb_thread = 1):
+    def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1, nb_thread = 1, dynamic_patches = True):
         priorities = [self.patches[k].priority for k in range(len(self.patches))]
         i = np.argmax(priorities)
 
@@ -427,7 +440,7 @@ class Main():
             t3 = 0
 
         t = time.time()
-        best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation, nb_thread=nb_thread)
+        best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
 
         if verbose:
             t1 += time.time()-t
@@ -505,7 +518,7 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, verbose = False, save = False, method = "SSD", discretisation = 1, nb_thread = 1):
+    def main(self, image_path, mask_path, patch_size, verbose = False, save = False, method = "SSD", discretisation = 1, nb_thread = 1, dynamic_patches = True):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=False, plot=False)
@@ -514,6 +527,9 @@ class Main():
         self.remove_mask()
 
         self.save_image()
+
+        if not(dynamic_patches):
+            self.save_patches_center_list = self.get_possible_patches(distance_btwn_patch = patch_size*discretisation, radius = int((patch_size-1)/2))
 
         self.upsize_image(patch_size)
 
@@ -544,7 +560,7 @@ class Main():
                 print("Update priorities : " + str(time.time()-t))
                 t = time.time()
 
-            self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation, nb_thread=nb_thread)
+            self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
             
             self.find_contour(smoothing=False, plot = False)
 
@@ -560,4 +576,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image10.jpg", "mask14.ppm", 9, verbose=False, save = True, method="SSD" , discretisation=1, nb_thread=1)
+    m.main("image.jpg", "mask.ppm", 9, verbose=False, save = True, method="SSD" , discretisation=1, nb_thread=1, dynamic_patches=False)
