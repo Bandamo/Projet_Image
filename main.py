@@ -548,4 +548,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image4.jpg", "mask8.ppm", 9, verbose=False, save = False, method=0.5, discretisation=1)
+    m.main("image7.png", "mask11.ppm", 9, verbose=False, save = False, method=0.5, discretisation=1)
