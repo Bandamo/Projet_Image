@@ -483,7 +483,7 @@ class Main():
     def main(self, image_path, mask_path, patch_size, verbose = False, method = "SSD", discretisation = 1):
         self.load_image(image_path)
         self.load_mask(mask_path)
-        self.find_contour(smoothing=True)
+        self.find_contour(smoothing=False)
 
         # Remove mask
         self.remove_mask()
@@ -521,7 +521,7 @@ class Main():
                 t = time.time()
 
             self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation)
-            self.find_contour(smoothing=True)
+            self.find_contour(smoothing=False)
 
             self.save_image(self.arr)
 
@@ -534,4 +534,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image4.jpg", "mask8.ppm", 9, verbose=False, method="SSD", discretisation=1)
+    m.main("image.jpg", "mask.ppm", 9, verbose=False, method="SSD", discretisation=1)

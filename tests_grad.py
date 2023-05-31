@@ -8,14 +8,14 @@ import time
 
 if __name__ == "__main__":
     m = Main()
-    m.load_image("image.jpg")
-    m.load_mask("mask.ppm")
+    m.load_image("image4.jpg")
+    m.load_mask("mask8.ppm")
     m.upsize_image(9)
     m.find_contour(plot = False)
     m.create_patches(9)
             
     #selected_patch = m.patches[959] #959 1254
-    selected_patch = m.patches[1040] #959 1254
+    selected_patch = m.patches[20] #959 1254
 
     start_time = time.time()
     print('Prio : %f' % selected_patch.update_priority(m.mask, method='max_gradient'))
@@ -52,9 +52,9 @@ if __name__ == "__main__":
 
     # Draw a vector field and invert the y axis
     plt.figure()
-    Q = plt.quiver(grad_y, grad_x)
+    Q = plt.quiver(-grad_y, grad_x)
     #plt.quiver(closest_pix[1], closest_pix[0], isophote_method_1[1], isophote_method_1[0], color='red', scale=Q.scale)
-    plt.quiver(max_coord[1], max_coord[0], isophote_method_2[1], isophote_method_2[0], color='green', scale=Q.scale)
+    plt.quiver(max_coord[1], max_coord[0], -isophote_method_2[1], isophote_method_2[0], color='green', scale=Q.scale)
     plt.gca().invert_yaxis()
     #plt.plot(closest_pix[1], closest_pix[0], 'b*')
     
@@ -76,9 +76,15 @@ if __name__ == "__main__":
 
     # Get the gradient of the mask within the patch
     plt.figure()
-    grad_mask_x = np.gradient(m.mask)[0][selected_patch.position[0] - selected_patch.radius:selected_patch.position[0] + selected_patch.radius, selected_patch.position[1] - selected_patch.radius:selected_patch.position[1] + selected_patch.radius]
-    grad_mask_y = np.gradient(m.mask)[1][selected_patch.position[0] - selected_patch.radius:selected_patch.position[0] + selected_patch.radius, selected_patch.position[1] - selected_patch.radius:selected_patch.position[1] + selected_patch.radius]
+    mask = m.mask[selected_patch.position[0] - selected_patch.radius:selected_patch.position[0] + selected_patch.radius, selected_patch.position[1] - selected_patch.radius:selected_patch.position[1] + selected_patch.radius]
+    grad_mask_x = np.gradient(mask)[0]
+    grad_mask_y = np.gradient(mask)[1]
     plt.quiver(-grad_mask_y, grad_mask_x)
     plt.gca().invert_yaxis()
     plt.plot(closest_pix[1], closest_pix[0], 'b*')
+
+    # Evaluate the gradient at position
+    normal = (-grad_mask_y[closest_pix[0], closest_pix[1]], grad_mask_x[closest_pix[0], closest_pix[1]]) 
+    
+    print("Normal: ", normal)
     plt.show()
