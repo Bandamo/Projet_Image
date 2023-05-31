@@ -311,8 +311,13 @@ class Main():
             p2[np.where(data == 0)] = 0
             distance = np.sum((abs(data - p2))**2, dtype=np.int64)
             d_center = np.sqrt((csource[0]-ctarget[0])**2 + (csource[1]-ctarget[1])**2)
+
+            # Normalize :
+            distance = distance/(255**2*p2.shape[0]*p2.shape[1])
+            d_center = d_center/(np.sqrt(self.shape[0]**2 + self.shape[1]**2))
+
             #print("Distance pre-center : " + str(distance))
-            distance = distance + d_center*1400
+            distance = distance + d_center/4
             #print("Distance post-center : " + str(distance))
         elif method == "MC":
             distance = np.sum(np.square(mean_color-np.mean(patch2, axis=(0,1), dtype=np.int32), dtype=np.int32))
@@ -353,6 +358,7 @@ class Main():
         # Return the possible patches to replace the given one
         # patch : Patch
         # Return : list of Patch
+        distance_btwn_patch = int(distance_btwn_patch)
         patches = []
         center_list = []
         hcenter, vcenter = (radius, radius)
@@ -576,4 +582,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image.jpg", "mask.ppm", 9, verbose=False, save = True, method="SSD" , discretisation=1, nb_thread=1, dynamic_patches=False)
+    m.main("image.jpg", "mask.ppm", 9, verbose=False, save = False, method="SSDED" , discretisation=1, nb_thread=1, dynamic_patches=False)
