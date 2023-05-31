@@ -34,7 +34,7 @@ class Patch():
         self.conf /= (2*self.radius + 1)**2
         return self.conf
 
-    def compute_dat_term(self, mask, method='max_gradient', only_isophote=True, plot=False, verbose=False):
+    def compute_dat_term(self, mask, method='max_gradient', only_isophote=False, plot=False, verbose=False):
         closest_pixel = self.get_closest_pixel(mask, self.position)
         
         grad = self.compute_gradient(mask)
@@ -54,8 +54,8 @@ class Patch():
 
         if plot:
             plt.plot(max_coord[1], max_coord[0], 'b*')
-            plt.quiver(max_coord[1], max_coord[0], isophote_T[1], isophote_T[0], color='green')
-            plt.quiver(max_coord[1], max_coord[0], normal[1], normal[0], color='yellow')
+            plt.quiver(max_coord[1], max_coord[0], isophote_T[1], isophote_T[0], color='red')
+            plt.quiver(max_coord[1], max_coord[0], normal[1], normal[0], color='blue')
             plt.show()
         
         if only_isophote:
@@ -73,14 +73,14 @@ class Patch():
 
     def compute_normal(self, mask, position):
         # Compute the normal vector to the contour at position
-        mask = mask[self.position[0] - self.radius:self.position[0] + self.radius, self.position[1] - self.radius:self.position[1] + self.radius]
+        mask = mask[self.position[0] - self.radius:self.position[0] + self.radius + 1, self.position[1] - self.radius:self.position[1] + self.radius + 1]
         normal = np.gradient(mask)
 
         position[0] = position[0] - self.position[0] + self.radius
         position[1] = position[1] - self.position[1] + self.radius
 
         # Evaluate the gradient at position
-        normal = np.array([-normal[1][position[0], position[1]], normal[0][position[0], position[1]]])
+        normal = np.array([normal[0][position[0], position[1]], normal[1][position[0], position[1]]])
         return normal
     
     def compute_gradient(self, mask, plot=False):
