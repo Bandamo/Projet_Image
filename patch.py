@@ -69,7 +69,7 @@ class Patch():
         self.conf /= (2*self.radius + 1)**2
         return self.conf
 
-    def compute_dat_term(self, mask, method='max_gradient', only_isophote=True, plot=False, verbose=False):
+    def compute_dat_term(self, mask, method='max_gradient', only_isophote=False, plot=False, verbose=False):
         """
         Compute the data term of the patch
 
@@ -95,7 +95,7 @@ class Patch():
         
         isophote_T = self.perpendicular_vector(isophote)
         # We then need to get the normal vector to the contour at position
-        #normal = self.compute_normal(mask, closest_pixel)
+        normal = self.compute_normal(mask, closest_pixel)
 
         # We then compute the dot product between the two vectors
 
@@ -171,7 +171,7 @@ class Patch():
 
         return closest_pixel
 
-    def update_priority(self, mask, method='max_gradient', only_isophote=True, plot=False, verbose=False):
+    def update_priority(self, mask, method='max_gradient', only_isophote=False, plot=False, verbose=False):
         """
         Updates the priority of the patch
         """
