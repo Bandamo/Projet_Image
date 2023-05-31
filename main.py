@@ -281,39 +281,49 @@ class Main():
         if arr is None:
             arr = self.arr
         img = Image.fromarray(arr)
-        nb_image = len(os.listdir("log_image"))//3
+        nb_image = len(os.listdir("log_image"))
         img.save("log_image/result"+str(nb_image).zfill(3)+".jpg")
 
-        plt.clf()
-        plt.imshow(self.mask)
-        plt.savefig("log_image/mask"+str(nb_image).zfill(3)+".jpg")
+        #plt.clf()
+        #plt.imshow(self.mask)
+        #plt.savefig("log_image/mask"+str(nb_image).zfill(3)+".jpg")
 
-        contour = self.contour
-        plt.clf()
-        plt.imshow(arr)
-        plt.plot([c[1] for c in contour], [c[0] for c in contour], 'r.')
-        plt.savefig("log_image/contour"+str(nb_image).zfill(3)+".jpg")
+        #contour = self.contour
+        #plt.clf()
+        #plt.imshow(arr)
+        #plt.plot([c[1] for c in contour], [c[0] for c in contour], 'r.')
+        #plt.savefig("log_image/contour"+str(nb_image).zfill(3)+".jpg")
 
     # ------------------------------------ PROPAGATING TEXTURE ------------------------
-    def distances(self, method = "SSD", data = None, patch2 = None, mean_color = None):
+    def distances(self, method = "SSD", data = None, csource = None, patch2 = None, ctarget = None, mean_color = None):
         if method == "SSD":
             data = data.astype(np.int32)
             p2 = np.copy(patch2)
             p2 = p2.astype(np.int32)
             p2[np.where(data == 0)] = 0
             distance = np.sum((abs(data - p2))**2, dtype=np.int64)
+        elif method == "SSDED":
+            data = data.astype(np.int32)
+            p2 = np.copy(patch2)
+            p2 = p2.astype(np.int32)
+            p2[np.where(data == 0)] = 0
+            distance = np.sum((abs(data - p2))**2, dtype=np.int64)
+            d_center = np.sqrt((csource[0]-ctarget[0])**2 + (csource[1]-ctarget[1])**2)
+            #print("Distance pre-center : " + str(distance))
+            distance = distance + d_center*1400
+            #print("Distance post-center : " + str(distance))
         elif method == "MC":
             distance = np.sum(np.square(mean_color-np.mean(patch2, axis=(0,1), dtype=np.int32), dtype=np.int32))
         return distance
 
-    def thread_best_patch(self, patches, center_list, process_number = -1 ,mutable_array = None, data = None, mean_color = None, method = "SSD"):
+    def thread_best_patch(self, patches, center_list, process_number = -1, csource = None,mutable_array = None, data = None, mean_color = None, method = "SSD"):
         best_distance = float("inf")
         distancessd = 0
         distancemc = 0
         weight = 0
         if type(method) == float:
             weight = method
-        elif method == "SSD":
+        elif method == "SSD" or method == "SSDED":
             weight = 1
         elif method == "MC":
             weight = 0
@@ -323,9 +333,11 @@ class Main():
             if self.mask[center_list[k]]: # Condition on confidence
                 if method == "SSD" or type(method) == float:
                     distancessd = self.distances(method="SSD", data=data, patch2=p)
+                elif method == "SSDED":
+                    distancessd = self.distances(method="SSDED", data=data, patch2=p, csource = csource, ctarget=center_list[k])
                 if method == "MC" or type(method) == float: # Mean Color
                     distancemc = self.distances(method="MC", patch2=p, mean_color=mean_color)
-                    
+                
                 distance = weight*distancessd + (1-weight)*distancemc
 
                 if distance < best_distance:
@@ -379,7 +391,7 @@ class Main():
                 vcenter += distance_btwn_patch
 
         if nb_thread == 1:
-            best_patch, best_distance = self.thread_best_patch(patches, center_list, data=data, mean_color=mean_color, method=method)
+            best_patch, best_distance = self.thread_best_patch(patches, center_list, data=data, csource=patch.position , mean_color=mean_color, method=method)
         else:
             mutable_array = [(None, None) for k in range(nb_thread)]
 
@@ -405,7 +417,7 @@ class Main():
             best_patch = Patch(data=best_patch[0], position=best_patch[1], radius=patch.radius)
             return best_patch
 
-    def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1):
+    def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1, nb_thread = 1):
         priorities = [self.patches[k].priority for k in range(len(self.patches))]
         i = np.argmax(priorities)
 
@@ -415,7 +427,7 @@ class Main():
             t3 = 0
 
         t = time.time()
-        best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation)
+        best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation, nb_thread=nb_thread)
 
         if verbose:
             t1 += time.time()-t
@@ -493,10 +505,10 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, verbose = False, save = False, method = "SSD", discretisation = 1):
+    def main(self, image_path, mask_path, patch_size, verbose = False, save = False, method = "SSD", discretisation = 1, nb_thread = 1):
         self.load_image(image_path)
         self.load_mask(mask_path)
-        self.find_contour(smoothing=False)
+        self.find_contour(smoothing=False, plot=False)
 
         # Remove mask
         self.remove_mask()
@@ -522,7 +534,7 @@ class Main():
                 t = time.time()
 
             t = time.time()
-            self.create_patches(patch_size)
+            self.create_patches(patch_size, plot=False)
             if verbose:
                 print("Active patches : " + str(time.time()-t))
                 t = time.time()
@@ -532,9 +544,9 @@ class Main():
                 print("Update priorities : " + str(time.time()-t))
                 t = time.time()
 
-            self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation)
+            self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation, nb_thread=nb_thread)
             
-            self.find_contour(smoothing=False)
+            self.find_contour(smoothing=False, plot = False)
 
             if save:
                 self.save_image(self.arr)
@@ -548,4 +560,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image8.ppm", "mask12.ppm", 5, verbose=False, save = True, method="SSD" , discretisation=1)
+    m.main("image10.jpg", "mask14.ppm", 9, verbose=False, save = True, method="SSD" , discretisation=1, nb_thread=1)
