@@ -6,6 +6,7 @@ import progressbar
 import time
 import os
 from threading import Thread
+import sys
 
 class Main():
     def __init__(self) -> None:
@@ -107,7 +108,7 @@ class Main():
         self.mask[m > 0] = 1
         #create 2D array of 0 and 1
         self.mask = self.mask[:,:,0]
-        print("Shape of mask : " + str(self.mask.shape))
+        #print("Shape of mask : " + str(self.mask.shape))
 
     def update_contour(self, patch, plot = False):
         """
@@ -544,7 +545,6 @@ class Main():
 
         max_mask = len(np.where(self.mask == 0)[0])
         bar = progressbar.ProgressBar(max_value=max_mask)
-        i = 0
 
         while len(self.contour) > 0:
 
@@ -589,5 +589,7 @@ class Main():
 
 
 if __name__=="__main__":
+    im = sys.argv[1]
+    mask = sys.argv[2]
     m = Main()
-    m.main("image.jpg", "mask.ppm", 9, verbose=False, save = False, result = "save", method="SSDED" , discretisation=1, nb_thread=1, dynamic_patches=False)
+    m.main(im, mask, 9, verbose=False, save = False, result = "save", method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
