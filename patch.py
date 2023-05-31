@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import scipy as sc
 import matplotlib.pyplot as plt
+from skimage.color import rgb2gray, rgb2lab
 
 class Patch():
     def __init__(self, data, radius, position, initial_conf=0, initial_dat_term=1) -> None:
@@ -33,7 +34,7 @@ class Patch():
         self.conf /= (2*self.radius + 1)**2
         return self.conf
 
-    def compute_dat_term(self, mask, method='max_gradient', only_isophote=False, plot=False, verbose=True):
+    def compute_dat_term(self, mask, method='max_gradient', only_isophote=True, plot=False, verbose=False):
         closest_pixel = self.get_closest_pixel(mask, self.position)
         
         grad = self.compute_gradient(mask)
@@ -52,16 +53,15 @@ class Patch():
         # We then compute the dot product between the two vectors
 
         if plot:
-            plt.imshow(self.data)
             plt.plot(max_coord[1], max_coord[0], 'b*')
             plt.quiver(max_coord[1], max_coord[0], isophote_T[1], isophote_T[0], color='green')
             plt.quiver(max_coord[1], max_coord[0], normal[1], normal[0], color='yellow')
             plt.show()
         
         if only_isophote:
-            self.dat_term = np.linalg.norm(abs(isophote_T)/255)
+            self.dat_term = np.linalg.norm(abs(isophote_T))
         else:
-            self.dat_term = np.linalg.norm(abs(np.dot(isophote_T, normal)/255))
+            self.dat_term = np.linalg.norm(abs(np.dot(isophote_T, normal)))
 
         if verbose:
             print("Closest pixel: ", closest_pixel)
@@ -81,33 +81,28 @@ class Patch():
 
         # Evaluate the gradient at position
         normal = np.array([-normal[1][position[0], position[1]], normal[0][position[0], position[1]]])
-        print("Normal: ", normal)
         return normal
     
     def compute_gradient(self, mask, plot=False):
         # Compute the gradient of the patch at position
-        data = cv2.cvtColor(self.data, cv2.COLOR_BGR2GRAY)
-        grad = np.gradient(data)
-
-        # Set the gradient to 0 if the pixel is in the mask
+        data = rgb2gray(self.data)
         mask = mask[self.position[0] - self.radius:self.position[0] + self.radius + 1, self.position[1] - self.radius:self.position[1] + self.radius + 1]
-        grad[0][mask == 0] = 0
-        grad[1][mask == 0] = 0
-        
-        # Smooth the gradient
-        grad[0] = cv2.GaussianBlur(grad[0], (7,7), 0)
-        grad[1] = cv2.GaussianBlur(grad[1], (7,7), 0)
 
+        data[mask == 0] = None
+
+        gradient = np.nan_to_num(np.array(np.gradient(data)))
+
+        # Smooth the gradient
+        gradient[0] = cv2.GaussianBlur(gradient[0], (3,3), 0)
+        gradient[1] = cv2.GaussianBlur(gradient[1], (3,3), 0)
 
         if plot:
             plt.figure()
             plt.imshow(data)
 
-            plt.figure()
-            plt.quiver(-grad[1], grad[0])
+            plt.quiver(-gradient[1], gradient[0])
             plt.gca().invert_yaxis()
-            plt.show()
-        return grad
+        return gradient
 
     def get_closest_pixel(self, mask, position):
         # Returns the closest pixel from the position to the contour
