@@ -394,7 +394,9 @@ class Main():
 
     def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1):
         priorities = [self.patches[k].priority for k in range(len(self.patches))]
-        i = np.argmin(priorities)
+        i = np.argmax(priorities)
+        print("Pointed priority : " + str(self.patches[i].priority))
+        print("Min priority : " + str(np.max(priorities)))
 
         if verbose:
             t1 = 0
@@ -480,7 +482,7 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, verbose = False, method = "SSD", discretisation = 1):
+    def main(self, image_path, mask_path, patch_size, verbose = False, save = False, method = "SSD", discretisation = 1):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=True)
@@ -523,7 +525,8 @@ class Main():
             self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation)
             self.find_contour(smoothing=True)
 
-            self.save_image(self.arr)
+            if save:
+                self.save_image(self.arr)
 
             if verbose:
                 print("Propagate texture : " + str(time.time()-t))
@@ -534,4 +537,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image4.jpg", "mask8.ppm", 9, verbose=False, method="SSD", discretisation=1)
+    m.main("image4.jpg", "mask8.ppm", 9, verbose=False, save = True, method="SSD", discretisation=1)
