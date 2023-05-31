@@ -359,6 +359,8 @@ class Main():
         # patch : Patch
         # Return : list of Patch
         distance_btwn_patch = int(distance_btwn_patch)
+        if distance_btwn_patch == 0:
+            raise Exception("Distance between patch is 0")
         patches = []
         center_list = []
         hcenter, vcenter = (radius, radius)
@@ -524,7 +526,7 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, verbose = False, save = False, method = "SSD", discretisation = 1, nb_thread = 1, dynamic_patches = True):
+    def main(self, image_path, mask_path, patch_size, result = "save", verbose = False, save = False, method = "SSD", discretisation = 1, nb_thread = 1, dynamic_patches = True):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=False, plot=False)
@@ -532,7 +534,8 @@ class Main():
         # Remove mask
         self.remove_mask()
 
-        self.save_image()
+        if save:
+            self.save_image()
 
         if not(dynamic_patches):
             self.save_patches_center_list = self.get_possible_patches(distance_btwn_patch = patch_size*discretisation, radius = int((patch_size-1)/2))
@@ -577,9 +580,14 @@ class Main():
                 print("Propagate texture : " + str(time.time()-t))
         
         self.recrop_image()
-        self.print_image()
+        if result == "save":
+            self.save_image()
+        elif result == "return":
+            return self.arr
+        elif result == "print":
+            self.print_image()
 
 
 if __name__=="__main__":
     m = Main()
-    m.main("image.jpg", "mask.ppm", 9, verbose=False, save = False, method="SSDED" , discretisation=1, nb_thread=1, dynamic_patches=False)
+    m.main("image.jpg", "mask.ppm", 9, verbose=False, save = False, result = "save", method="SSDED" , discretisation=1, nb_thread=1, dynamic_patches=False)
