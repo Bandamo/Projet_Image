@@ -5,6 +5,31 @@ import matplotlib.pyplot as plt
 from skimage.color import rgb2gray, rgb2lab
 
 class Patch():
+    """
+    Class representing a patch in the image
+
+    Attributes:
+        data (np.array): The image data of the patch
+        radius (int): The radius of the patch
+        position (tuple): The position of the patch in the image
+        conf (float): The confidence term of the patch
+        dat_term (float): The data term of the patch
+        active (bool): Whether the patch is active or not (is in the contour)
+        priority (float): The priority of the patch
+
+    Methods:
+        set_state(state): Sets the state of the patch (active or not)
+        is_active(): Returns whether the patch is active or not
+        perpendicular_vector(vector): Returns a perpendicular vector to the input vector
+        compute_conf(mask): Computes the confidence term of the patch
+        compute_dat_term(mask, method, only_isophote, plot, verbose): Computes the data term of the patch
+        compute_normal(mask, position): Computes the normal vector to the contour at position
+        compute_gradient(mask, plot): Computes the gradient of the patch
+        get_closest_pixel(mask, position): Returns the closest pixel from the position to the contour
+        update_priority(mask, method): Updates the priority of the patch
+
+
+    """
     def __init__(self, data, radius, position, initial_conf=0, initial_dat_term=1) -> None:
         self.data = data
         self.radius = radius
@@ -16,17 +41,27 @@ class Patch():
         pass
     
     def set_state(self, state: bool):
+        """
+        Sets the state of the patch (active or not)
+        """
         self.active = state
 
     def is_active(self):
+        """
+        Returns whether the patch is active or not
+        """
         return self.active
 
     def perpendicular_vector(self, vector):
-        # Returns a perpendicular vector to the input vector
+        """
+        Returns a perpendicular vector to the input vector
+        """
         return np.array([-vector[1], vector[0]])
 
     def compute_conf(self, mask):
-        # Compute the confidence term
+        """
+        Compute the confidence term of the patch
+        """
         for i in range(self.position[0] - self.radius, self.position[0] + self.radius):
             for j in range(self.position[1] - self.radius, self.position[1] + self.radius):
                 if mask[i,j] == 1:
@@ -34,7 +69,19 @@ class Patch():
         self.conf /= (2*self.radius + 1)**2
         return self.conf
 
-    def compute_dat_term(self, mask, method='max_gradient', only_isophote=False, plot=False, verbose=False):
+    def compute_dat_term(self, mask, method='max_gradient', only_isophote=True, plot=False, verbose=False):
+        """
+        Compute the data term of the patch
+
+        Parameters:
+            mask (np.array): The mask of the image
+            method (str): The method to use to compute the data term
+                - 'closest_pixel': Take the value of the gradient at the closest pixel to the contour
+                - 'max_gradient': Take the value of the gradient at the pixel with the highest gradient
+            only_isophote (bool): Whether to only use the isophote or use the combo with the normal vector to the contour
+            plot (bool): Whether to plot gradient, isophote^T and normal vector
+            verbose (bool): Whether to print the closest pixel, isophote, normal vector and data term
+        """
         closest_pixel = self.get_closest_pixel(mask, self.position)
         
         grad = self.compute_gradient(mask)
@@ -48,7 +95,7 @@ class Patch():
         
         isophote_T = self.perpendicular_vector(isophote)
         # We then need to get the normal vector to the contour at position
-        normal = self.compute_normal(mask, closest_pixel)
+        #normal = self.compute_normal(mask, closest_pixel)
 
         # We then compute the dot product between the two vectors
 
@@ -72,7 +119,9 @@ class Patch():
         return self.dat_term
 
     def compute_normal(self, mask, position):
-        # Compute the normal vector to the contour at position
+        """
+        Compute the normal vector to the contour at position
+        """
         mask = mask[self.position[0] - self.radius:self.position[0] + self.radius + 1, self.position[1] - self.radius:self.position[1] + self.radius + 1]
         normal = np.gradient(mask)
 
@@ -84,7 +133,9 @@ class Patch():
         return normal
     
     def compute_gradient(self, mask, plot=False):
-        # Compute the gradient of the patch at position
+        """
+        Compute the gradient of the patch
+        """
         data = rgb2gray(self.data)
         mask = mask[self.position[0] - self.radius:self.position[0] + self.radius + 1, self.position[1] - self.radius:self.position[1] + self.radius + 1]
 
@@ -105,7 +156,9 @@ class Patch():
         return gradient
 
     def get_closest_pixel(self, mask, position):
-        # Returns the closest pixel from the position to the contour
+        """
+        Returns the closest pixel from the position to the contour
+        """
         min_dist = None
         closest_pixel = None
         for i in range(position[0] - self.radius, position[0] + self.radius):
@@ -115,12 +168,17 @@ class Patch():
                     if min_dist is None or dist < min_dist:
                         min_dist = dist
                         closest_pixel = [i,j]
+
         return closest_pixel
 
-    def update_priority(self, mask, method='closest_pixel'):
+    def update_priority(self, mask, method='max_gradient', only_isophote=True, plot=False, verbose=False):
+        """
+        Updates the priority of the patch
+        """
         self.conf = self.compute_conf(mask)
         #print('Conf: %f' % self.conf)
-        self.dat_term = self.compute_dat_term(mask, method)
+        self.dat_term = self.compute_dat_term(mask, method, only_isophote, plot, verbose)
         #print('Dat term: %s' % self.dat_term)
         self.priority = self.dat_term*self.conf
+
         return self.priority
