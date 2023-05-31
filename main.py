@@ -308,13 +308,26 @@ class Main():
 
     def thread_best_patch(self, patches, center_list, process_number = -1 ,mutable_array = None, data = None, mean_color = None, method = "SSD"):
         best_distance = float("inf")
+        distancessd = 0
+        distancemc = 0
+        weight = 0
+        if type(method) == float:
+            weight = method
+        elif method == "SSD":
+            weight = 1
+        elif method == "MC":
+            weight = 0
+
         for k in range(len(patches)):
             p = patches[k]            
             if self.mask[center_list[k]]: # Condition on confidence
-                if method == "SSD":
-                    distance = self.distances(method=method, data=data, patch2=p)
-                elif method == "MC": # Mean Color
-                    distance = self.distances(method=method, patch2=p, mean_color=mean_color)
+                if method == "SSD" or type(method) == float:
+                    distancessd = self.distances(method="SSD", data=data, patch2=p)
+                if method == "MC" or type(method) == float: # Mean Color
+                    distancemc = self.distances(method="MC", patch2=p, mean_color=mean_color)
+                    
+                distance = weight*distancessd + (1-weight)*distancemc
+
                 if distance < best_distance:
                     best_distance = distance
                     best_patch = (p, center_list[k])
@@ -336,7 +349,7 @@ class Main():
         best_distances = {}
 
         mean_color = None
-        if method == "MC":
+        if method == "MC" or type(method) == float:
             mean_color = np.sum(data, axis=(0,1), dtype=np.int32)
             patch_mask = self.mask[patch.position[0]-patch.radius:patch.position[0]+patch.radius+1, patch.position[1]-patch.radius:patch.position[1]+patch.radius+1]
             nb_one = np.sum(patch_mask)
@@ -394,7 +407,7 @@ class Main():
 
     def propagate_texture(self, verbose = False, plot = False, method = "SSD", discretisation = 1):
         priorities = [self.patches[k].priority for k in range(len(self.patches))]
-        i = np.argmin(priorities)
+        i = np.argmax(priorities)
 
         if verbose:
             t1 = 0
@@ -480,7 +493,7 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, verbose = False, method = "SSD", discretisation = 1):
+    def main(self, image_path, mask_path, patch_size, verbose = False, save = False, method = "SSD", discretisation = 1):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=False)
@@ -499,7 +512,6 @@ class Main():
         while len(self.contour) > 0:
 
             # Bar things
-            #print("Contour length : " + str(len(self.contour)))
             t = time.time()
             try:
                 bar.update(max_mask-len(np.where(self.mask == 0)[0]))
@@ -521,9 +533,11 @@ class Main():
                 t = time.time()
 
             self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation)
+            
             self.find_contour(smoothing=False)
 
-            self.save_image(self.arr)
+            if save:
+                self.save_image(self.arr)
 
             if verbose:
                 print("Propagate texture : " + str(time.time()-t))
@@ -534,4 +548,4 @@ class Main():
 
 if __name__=="__main__":
     m = Main()
-    m.main("image.jpg", "mask.ppm", 9, verbose=False, method="SSD", discretisation=1)
+    m.main("image4.jpg", "mask8.ppm", 9, verbose=False, save = False, method=0.5, discretisation=1)
