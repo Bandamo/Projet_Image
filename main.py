@@ -527,7 +527,7 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, result = "save", verbose = False, save = False, method = "SSD", discretisation = 1, nb_thread = 1, dynamic_patches = True):
+    def main(self, image_path, mask_path, patch_size, result = "save", verbose = False, save = False, distance_method = "SSDED", discretisation = 1, nb_thread = 1, dynamic_patches = False):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=False, plot=False)
@@ -569,7 +569,7 @@ class Main():
                 print("Update priorities : " + str(time.time()-t))
                 t = time.time()
 
-            self.propagate_texture(verbose = verbose, plot=False, method=method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
+            self.propagate_texture(verbose = verbose, plot=False, method=distance_method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
             
             self.find_contour(smoothing=False, plot = False)
 
@@ -592,4 +592,4 @@ if __name__=="__main__":
     im = sys.argv[1]
     mask = sys.argv[2]
     m = Main()
-    m.main(im, mask, 9, verbose=False, save = False, result = "save", method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
+    m.main(im, mask, 9, verbose=False, save = False, result = "save", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
