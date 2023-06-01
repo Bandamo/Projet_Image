@@ -14,15 +14,39 @@ pip3 install matplotlib numpy progressbar2 scipy skimage python-opencv
 
 ## Utilisation
 
-L'entièreté du programme réside dans la fonction main de la classe Main.
+L'entièreté du programme réside dans la fonction run de la classe InPainting.
 
-### Lancement par ligne de commande
+### Lancement par ligne de commande (Recommandé)
 
-Pour lancer le programme, il suffit de lancer le fichier main.py avec les arguments suivants :
+Pour lancer le programme, il suffit de lancer le fichier main.py avec des arguments :
 
 ```bash
-python3 main.py <image.jpg> <mask.ppm>
+python3 main.py -i image.jpg -m mask.ppm
 ```
+
+Pour plus d'informations sur les arguments, lancer le programme avec l'argument -h.
+
+```bash
+python3 main.py -h
+
+Help :
+	-i : image path
+	-m : mask path
+	-p : patch size
+	-r : result (save, print, return)
+	-v : verbose (True, False)
+	-s : save (True, False)
+	-plot : plot (True, False)
+	-d : distance method (SSD, SSDED, MC)
+	-dis : discretisation (float)
+	-t : number of thread (int)
+	-g : gradient method (max_gradient, mean_gradient, closest_pixel)
+	-dyn : dynamic patches (True, False)
+	-h : help
+Example : python main.py -i image.jpg -m mask.jpg -p 9 -r save -v True -s True -plot False -d SSDED -dis 1 -t 1 -dyn False
+
+```
+
 
 ### Lancement direct par la fonction main
 
@@ -37,7 +61,7 @@ main.run(<args>)
 
 #### Liste des arguments
 
-| Argument | Description | Exemple | Valeurs par défaut |
+| Argument | Description | Exemple | Valeur par défaut |
 | --- | --- | --- | --- |
 | image_path | Chemin vers l'image à reconstruire| image.jpg | Aucune |
 | mask_path | Chemin vers le masque de l'image | mask.ppm | Aucune |
