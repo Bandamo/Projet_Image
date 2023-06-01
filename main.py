@@ -8,7 +8,7 @@ import os
 from threading import Thread
 import sys
 
-class Main():
+class InPainting():
     def __init__(self) -> None:
         # Paramètres de l'image
         self.image = None
@@ -108,6 +108,7 @@ class Main():
         self.mask[m > 0] = 1
         #create 2D array of 0 and 1
         self.mask = self.mask[:,:,0]
+        
         #print("Shape of mask : " + str(self.mask.shape))
 
     def update_contour(self, patch, plot = False):
@@ -318,7 +319,7 @@ class Main():
             d_center = d_center/(np.sqrt(self.shape[0]**2 + self.shape[1]**2))
 
             #print("Distance pre-center : " + str(distance))
-            distance = distance + d_center/4
+            distance = distance * d_center/4
             #print("Distance post-center : " + str(distance))
         elif method == "MC":
             distance = np.sum(np.square(mean_color-np.mean(patch2, axis=(0,1), dtype=np.int32), dtype=np.int32))
@@ -375,7 +376,7 @@ class Main():
                 vcenter += distance_btwn_patch
         return patches, center_list
 
-    def find_best_patch(self, patch, discretisation = "default", method = "SSD", nb_thread = 1, dynamic_patches = True):
+    def find_best_patch(self, patch, discretisation = "default", method = "SSD", nb_thread = 1, dynamic_patches = True, plot = False):
         # Return the best patch to replace the given one
         # patch : Patch
         # Return : Patch
@@ -433,6 +434,19 @@ class Main():
                 if mutable_array[k][1] < best_distance:
                     best_patch, best_distance = mutable_array[k]
 
+        if plot:
+            plt.subplot(2,2,(1,2))
+            plt.imshow(self.arr)
+            # Create square on the best_patch
+            plt.plot([best_patch[1][1]-patch.radius, best_patch[1][1]-patch.radius, best_patch[1][1]+patch.radius, best_patch[1][1]+patch.radius, best_patch[1][1]-patch.radius], [best_patch[1][0]-patch.radius, best_patch[1][0]+patch.radius, best_patch[1][0]+patch.radius, best_patch[1][0]-patch.radius, best_patch[1][0]-patch.radius], 'r')
+            # Plot the patch
+            plt.plot([patch.position[1]-patch.radius, patch.position[1]-patch.radius, patch.position[1]+patch.radius, patch.position[1]+patch.radius, patch.position[1]-patch.radius], [patch.position[0]-patch.radius, patch.position[0]+patch.radius, patch.position[0]+patch.radius, patch.position[0]-patch.radius, patch.position[0]-patch.radius], 'b')
+            plt.subplot(2,2,3)
+            plt.imshow(patch.data)
+            plt.subplot(2,2,4)
+            plt.imshow(best_patch[0])
+            plt.show()
+
         if best_patch is None:
             print("No best patch found")
         else:
@@ -449,7 +463,7 @@ class Main():
             t3 = 0
 
         t = time.time()
-        best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
+        best_patch = self.find_best_patch(self.patches[i], method=method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches, plot=plot)
 
         if verbose:
             t1 += time.time()-t
@@ -479,12 +493,6 @@ class Main():
             #print("Patch " + str(self.patches[i].position) + " not active")
             pass
         
-        if plot:
-            plt.imshow(self.mask)
-            # Entoure le patch
-            plt.plot([vindex[0], vindex[0], vindex[1], vindex[1], vindex[0]], [hindex[0], hindex[1], hindex[1], hindex[0], hindex[0]], 'r')
-            plt.show()
-
         if verbose:
             print("Time to find best patch : " + str(t1))
             print("Time to update contour : " + str(t2))
@@ -527,7 +535,7 @@ class Main():
 
     #-------------------------- MAIN ----------------------------
 
-    def main(self, image_path, mask_path, patch_size, result = "save", verbose = False, save = False, distance_method = "SSDED", discretisation = 1, nb_thread = 1, dynamic_patches = False):
+    def run(self, image_path, mask_path, patch_size, result = "save", verbose = False, plot = False, save = False, distance_method = "SSDED", discretisation = 1, nb_thread = 1, dynamic_patches = False):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=False, plot=False)
@@ -569,7 +577,7 @@ class Main():
                 print("Update priorities : " + str(time.time()-t))
                 t = time.time()
 
-            self.propagate_texture(verbose = verbose, plot=False, method=distance_method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
+            self.propagate_texture(verbose = verbose, method=distance_method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches, plot=plot)
             
             self.find_contour(smoothing=False, plot = False)
 
@@ -588,8 +596,14 @@ class Main():
             self.print_image()
 
 
-if __name__=="__main__":
+if __name__=="_main__":
     im = sys.argv[1]
     mask = sys.argv[2]
-    m = Main()
-    m.main(im, mask, 9, verbose=False, save = False, result = "save", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
+    m = InPainting()
+    m.run(im, mask, 9, verbose=False, save = False, result = "save", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
+
+if __name__=="__main__":
+    im = "image/beernap.jpg"
+    mask = "mask/beernap.ppm"
+    m = InPainting()
+    m.run(im, mask, 9, verbose=False, save = False, plot = True, result = "print", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)

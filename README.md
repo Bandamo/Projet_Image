@@ -26,13 +26,13 @@ python3 main.py <image.jpg> <mask.ppm>
 
 ### Lancement direct par la fonction main
 
-Pour lancer le programme directement depuis un autre fichier python, il suffit d'importer la classe Main et de créer une instance de main et de lancer la fonction main.
+Pour lancer le programme directement depuis un autre fichier python, il suffit d'importer la classe InPainting et de créer une instance de main et de lancer la fonction run.
     
 ```python
-from main import Main
+from main import InPainting
 
 m = Main()
-main.main(<args>)
+main.run(<args>)
 ```
 
 #### Liste des arguments
@@ -50,3 +50,7 @@ main.main(<args>)
 | nb_thread | Nombre de thread utilisé pour le calcul du meilleur patch | 12 | 1 |
 | dynamic_patches | Utilise les patchs générés en tant que patchs de remplacement | True | False |
 
+## Image de test
+
+Certaines images sont disponibles dans le dossier image et les masques dans le dossier mask.
+À une image x.jpg correspondent les masques x.ppm et x_y.ppm.
