@@ -605,14 +605,91 @@ class InPainting():
             self.print_image()
 
 
-if __name__=="_main__":
-    im = sys.argv[1]
-    mask = sys.argv[2]
-    m = InPainting()
-    m.run(im, mask, 9, verbose=False, save = False, result = "save", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
-
 if __name__=="__main__":
-    im = "image/beernap.jpg"
-    mask = "mask/beernap.ppm"
+    def help_page():
+        print("Help :")
+        print("\t-i : image path")
+        print("\t-m : mask path")
+        print("\t-p : patch size")
+        print("\t-r : result (save, print, return)")
+        print("\t-v : verbose (True, False)")
+        print("\t-s : save (True, False)")
+        print("\t-plot : plot (True, False)")
+        print("\t-d : distance method (SSD, SSDED, MC)")
+        print("\t-dis : discretisation (float)")
+        print("\t-t : number of thread (int)")
+        print("\t-dyn : dynamic patches (True, False)")
+        print("\t-h : help")
+        print("Example : python main.py -i image.jpg -m mask.jpg -p 9 -r save -v True -s True -plot False -d SSDED -dis 1 -t 1 -dyn False")
+        
+
+    # Terminal launch
+    args = sys.argv
+    args = args[1:]
+
+    # Default values
+    im = None
+    mask = None
+    patch_size = 9
+    result = "save"
+    verbose = False
+    save = False
+    plot = False
+    distance_method = "SSDED"
+    discretisation = 1
+    nb_thread = 1
+    dynamic_patches = False
+
+    if len(args) == 1 and args[0] == "-h":
+        help_page()
+        sys.exit()
+    if len(args)%2 != 0:
+        raise Exception("Wrong number of arguments")
+    else:
+        for k in range(len(args)//2):
+            k2 = k*2
+            if args[k2] == "-i":
+                im = args[k2+1]
+            elif args[k2] == "-m":
+                mask = args[k2+1]
+            elif args[k2] == "-p":
+                patch_size = int(args[k2+1])
+            elif args[k2] == "-r":
+                result = args[k2+1]
+            elif args[k2] == "-v":
+                verbose = args[k2+1]
+            elif args[k2] == "-s":
+                save = args[k2+1]
+            elif args[k2] == "-d":
+                distance_method = args[k2+1]
+            elif args[k2] == "-dis":
+                discretisation = float(args[k2+1])
+            elif args[k2] == "-t":
+                nb_thread = int(args[k2+1])
+            elif args[k2] == "-dyn":
+                dynamic_patches = args[k2+1]
+            elif args[k2] == "-plot":
+                plot = args[k2+1]
+            else:
+                raise Exception("Wrong argument : " + args[k2])
+    if im is None:
+        print("No image path, try -h for help")
+    if mask is None:
+        print("No mask path, try -h for help")
+
+    print("Launching InPainting with :")
+    print("\tImage path : " + im)
+    print("\tMask path : " + mask)
+    print("\tPatch size : " + str(patch_size))
+    print("\tResult : " + result)
+    print("\tVerbose : " + str(verbose))
+    print("\tSave : " + str(save))
+    print("\tPlot : " + str(plot))
+    print("\tDistance method : " + distance_method)
+    print("\tDiscretisation : " + str(discretisation))
+    print("\tNumber of thread : " + str(nb_thread))
+    print("\tDynamic patches : " + str(dynamic_patches))
+
+
     m = InPainting()
-    m.run(im, mask, 9, verbose=False, save = False, plot = False, result = "save", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
+    m.run(im, mask, patch_size, verbose=verbose, save = save, plot = plot, result = result, distance_method=distance_method , discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
