@@ -505,12 +505,12 @@ class InPainting():
             print("Time to update contour : " + str(t2))
             print("Time to update image : " + str(t3))
 
-    def update_priorities(self):
+    def update_priorities(self, method = "max_gradient"):
         """
         Update the priority of all patches
         """
         for p in self.patches:
-            p.update_priority(self.mask.astype(np.uint8), method = "max_gradient")
+            p.update_priority(self.mask.astype(np.uint8), method = method)
     
     def get_active_patches(self, verbose = False):
         """
@@ -542,7 +542,7 @@ class InPainting():
 
     #-------------------------- MAIN ----------------------------
 
-    def run(self, image_path, mask_path, patch_size, result = "save", verbose = False, plot = False, save = False, distance_method = "SSDED", discretisation = 1, nb_thread = 1, dynamic_patches = False):
+    def run(self, image_path, mask_path, patch_size, result = "save", verbose = False, plot = False, save = False, distance_method = "SSDED", gradient_method = "max_gradient", discretisation = 1, nb_thread = 1, dynamic_patches = False):
         self.load_image(image_path)
         self.load_mask(mask_path)
         self.find_contour(smoothing=False, plot=False)
@@ -579,7 +579,7 @@ class InPainting():
                 print("Active patches : " + str(time.time()-t))
                 t = time.time()
             
-            self.update_priorities()
+            self.update_priorities(method = gradient_method)
             if verbose:
                 print("Update priorities : " + str(time.time()-t))
                 t = time.time()
@@ -639,11 +639,12 @@ if __name__=="__main__":
     discretisation = 1
     nb_thread = 1
     dynamic_patches = False
+    gradient_method = "max_gradient"
 
     if len(args) == 1 and args[0] == "-h":
         help_page()
         sys.exit()
-    if len(args)%2 != 0:
+    if len(args)%2 != 0 or len(args) == 0:
         raise Exception("Wrong number of arguments")
     else:
         for k in range(len(args)//2):
@@ -670,6 +671,8 @@ if __name__=="__main__":
                 dynamic_patches = args[k2+1]
             elif args[k2] == "-plot":
                 plot = args[k2+1]
+            elif args[k2] == "-g":
+                gradient_method = args[k2+1]
             else:
                 raise Exception("Wrong argument : " + args[k2])
     if im is None:
@@ -689,7 +692,8 @@ if __name__=="__main__":
     print("\tDiscretisation : " + str(discretisation))
     print("\tNumber of thread : " + str(nb_thread))
     print("\tDynamic patches : " + str(dynamic_patches))
+    print("\tGradient method : " + gradient_method)
 
 
     m = InPainting()
-    m.run(im, mask, patch_size, verbose=verbose, save = save, plot = plot, result = result, distance_method=distance_method , discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
+    m.run(im, mask, patch_size, verbose=verbose, save = save, plot = plot, result = result, distance_method=distance_method ,gradient_method=gradient_method, discretisation=discretisation, nb_thread=nb_thread, dynamic_patches=dynamic_patches)
