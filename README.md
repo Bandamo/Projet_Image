@@ -73,6 +73,7 @@ main.run(<args>)
 | discretisation | Distance entre chacun des patchs de comparaison, plus cette discretisation est grande, plus le programme est rapide mais moins précis | 5 | 1 |
 | nb_thread | Nombre de thread utilisé pour le calcul du meilleur patch | 12 | 1 |
 | dynamic_patches | Utilise les patchs générés en tant que patchs de remplacement | True | False |
+| gradient_method | Permet de définir la méthode d'évaluation du gradient pour les isophotes ("mean_gradient", "max_gradient", "closest_pixel") | "mean_gradient" | "max_gradient" |
 
 ## Image de test
 
