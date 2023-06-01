@@ -84,7 +84,7 @@ class Patch():
         """
         closest_pixel = self.get_closest_pixel(mask, self.position)
         
-        grad = self.compute_gradient(mask)
+        grad = self.compute_gradient(mask, plot)
 
         if method == 'closest_pixel':
             #print("Closest pixel: ", closest_pixel)
@@ -92,6 +92,8 @@ class Patch():
         elif method == 'max_gradient':
             max_coord = np.unravel_index(np.argmax(np.sqrt(grad[0]**2 + grad[1]**2)), grad[0].shape)
             isophote = np.array([grad[0][max_coord], grad[1][max_coord]])
+        elif method == 'mean_gradient':
+            isophote = np.array([np.mean(grad[0]), np.mean(grad[1])])
         
         isophote_T = self.perpendicular_vector(isophote)
         # We then need to get the normal vector to the contour at position
@@ -101,8 +103,8 @@ class Patch():
 
         if plot:
             plt.plot(max_coord[1], max_coord[0], 'b*')
-            plt.quiver(max_coord[1], max_coord[0], isophote_T[1], isophote_T[0], color='red')
-            plt.quiver(max_coord[1], max_coord[0], normal[1], normal[0], color='blue')
+            plt.quiver(max_coord[1], max_coord[0], -isophote_T[1], isophote_T[0], color='red')
+            plt.quiver(max_coord[1], max_coord[0], -normal[1], normal[0], color='blue')
             plt.show()
         
         if only_isophote:
@@ -137,6 +139,7 @@ class Patch():
         Compute the gradient of the patch
         """
         data = rgb2gray(self.data)
+
         mask = mask[self.position[0] - self.radius:self.position[0] + self.radius + 1, self.position[1] - self.radius:self.position[1] + self.radius + 1]
 
         data[mask == 0] = None
@@ -149,10 +152,11 @@ class Patch():
 
         if plot:
             plt.figure()
+            plt.imshow(self.data)
+            plt.figure()
             plt.imshow(data)
 
             plt.quiver(-gradient[1], gradient[0])
-            plt.gca().invert_yaxis()
         return gradient
 
     def get_closest_pixel(self, mask, position):
