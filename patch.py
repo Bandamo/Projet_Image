@@ -83,7 +83,10 @@ class Patch():
             verbose (bool): Whether to print the closest pixel, isophote, normal vector and data term
         """
         closest_pixel = self.get_closest_pixel(mask, self.position)
-        
+        closest_pixel_org = closest_pixel.copy()
+        closest_pixel_org[0] = closest_pixel[0] - self.position[0] + self.radius
+        closest_pixel_org[1] = closest_pixel[1] - self.position[1] + self.radius
+
         grad = self.compute_gradient(mask, plot)
 
         if method == 'closest_pixel':
@@ -99,12 +102,15 @@ class Patch():
         # We then need to get the normal vector to the contour at position
         normal = self.compute_normal(mask, closest_pixel)
 
-        # We then compute the dot product between the two vectors
-
         if plot:
-            plt.plot(max_coord[1], max_coord[0], 'b*')
-            plt.quiver(max_coord[1], max_coord[0], -isophote_T[1], isophote_T[0], color='red')
-            plt.quiver(max_coord[1], max_coord[0], -normal[1], normal[0], color='blue')
+            if method == 'closest_pixel' or method == 'mean_gradient':
+                plot_coord = closest_pixel
+            elif method == 'max_gradient':
+                plot_coord = max_coord
+
+            plt.plot(plot_coord[1], plot_coord[0], 'b*')
+            plt.quiver(plot_coord[1], plot_coord[0], -isophote_T[1], isophote_T[0], color='red')
+            plt.quiver(plot_coord[1], plot_coord[0], -normal[1], normal[0], color='blue')
             plt.show()
         
         if only_isophote:
@@ -183,6 +189,6 @@ class Patch():
         #print('Conf: %f' % self.conf)
         self.dat_term = self.compute_dat_term(mask, method, only_isophote, plot, verbose)
         #print('Dat term: %s' % self.dat_term)
-        self.priority = self.dat_term*self.conf
+        self.priority = self.conf * self.dat_term
 
         return self.priority
