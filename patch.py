@@ -91,7 +91,7 @@ class Patch():
 
         if method == 'closest_pixel':
             #print("Closest pixel: ", closest_pixel)
-            isophote = np.array(grad[:1][closest_pixel[0], closest_pixel[1]])
+            isophote = np.array([grad[0][closest_pixel_org[0], closest_pixel_org[1]], grad[1][closest_pixel_org[0], closest_pixel_org[1]]])
         elif method == 'max_gradient':
             max_coord = np.unravel_index(np.argmax(np.sqrt(grad[0]**2 + grad[1]**2)), grad[0].shape)
             isophote = np.array([grad[0][max_coord], grad[1][max_coord]])
