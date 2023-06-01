@@ -281,6 +281,10 @@ class InPainting():
         """
         Save log images
         """
+        try:
+            os.mkdir("log_image")
+        except:
+            pass
 
         if arr is None:
             arr = self.arr
