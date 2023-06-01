@@ -40,6 +40,7 @@ Help :
 	-d : distance method (SSD, SSDED, MC)
 	-dis : discretisation (float)
 	-t : number of thread (int)
+	-g : gradient method (max_gradient, mean_gradient, closest_pixel)
 	-dyn : dynamic patches (True, False)
 	-h : help
 Example : python main.py -i image.jpg -m mask.jpg -p 9 -r save -v True -s True -plot False -d SSDED -dis 1 -t 1 -dyn False

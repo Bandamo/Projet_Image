@@ -619,7 +619,7 @@ if __name__=="__main__":
         print("\t-dis : discretisation (float)")
         print("\t-t : number of thread (int)")
         print("\t-dyn : dynamic patches (True, False)")
-        print("\t-g : gradient method (max_gradient, mean_gradient)")
+        print("\t-g : gradient method (max_gradient, mean_gradient, closest_pixel)")
         print("\t-h : help")
         print("Example : python main.py -i image.jpg -m mask.jpg -p 9 -r save -v True -s True -plot False -d SSDED -dis 1 -t 1 -dyn False")
         
