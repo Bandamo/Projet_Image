@@ -277,7 +277,7 @@ class InPainting():
         self.arr = self.arr[:init_shape[0], :init_shape[1], :]
         self.shape = self.arr.shape
 
-    def save_image(self, arr=None):
+    def save_image(self, arr=None, name= None):
         """
         Save log images
         """
@@ -286,7 +286,10 @@ class InPainting():
             arr = self.arr
         img = Image.fromarray(arr)
         nb_image = len(os.listdir("log_image"))
-        img.save("log_image/result"+str(nb_image).zfill(3)+".jpg")
+        if name is None:
+            img.save("log_image/result"+str(nb_image).zfill(3)+".jpg")
+        else:
+            img.save("log_image/"+name+".jpg")
 
         #plt.clf()
         #plt.imshow(self.mask)
@@ -589,7 +592,9 @@ class InPainting():
         
         self.recrop_image()
         if result == "save":
-            self.save_image()
+            # Get name of the image
+            name = image_path.split("/")[-1].split(".")[0]
+            self.save_image(name = name)
         elif result == "return":
             return self.arr
         elif result == "print":
@@ -606,4 +611,4 @@ if __name__=="__main__":
     im = "image/beernap.jpg"
     mask = "mask/beernap.ppm"
     m = InPainting()
-    m.run(im, mask, 9, verbose=False, save = False, plot = True, result = "print", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
+    m.run(im, mask, 9, verbose=False, save = False, plot = False, result = "save", distance_method="SSDED" , discretisation=0.5, nb_thread=1, dynamic_patches=False)
